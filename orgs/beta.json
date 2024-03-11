@@ -1,0 +1,33 @@
+{
+  "orgName": "animalOS - Beta Test Org",
+  "adminEmail": "developer+animalos.scratch.beta@vertic.com.au",
+  "edition": "Developer",
+  "features": [
+    "WorkThanksPref"
+  ],
+  "settings": {
+    "workDotComSettings": {
+      "enableWorkThanksPref": true,
+      "enableProfileSkills": true
+    },
+    "lightningExperienceSettings": {
+      "enableS1DesktopEnabled": true
+    },
+    "chatterSettings": {
+      "enableChatter": true
+    },
+    "EnhancedNotesSettings": {
+      "enableEnhancedNotes": true,
+      "enableTasksOnEnhancedNotes": true
+    },
+    "userManagementSettings": {
+      "enableNewProfileUI": true
+    },
+    "securitySettings": {
+      "enableAdminLoginAsAnyUser": true,
+      "sessionSettings": {
+        "forceRelogin": false
+      }
+    }
+  }
+}

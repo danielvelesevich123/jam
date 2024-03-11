@@ -1,0 +1,46 @@
+minimum_cumulusci_version: '3.71.0'
+project:
+    name: animalOS
+    package:
+        name: jam
+        api_version: '59.0'
+    git:
+        repo_url: https://github.com/danielvelesevich123/jam
+        default_branch: 'release-production'
+        prefix_feature: feature/
+    test:
+        name_match: '%Test'
+    source_format: sfdx
+
+tasks:
+    robot:
+        options:
+            suites: robot/animalOS/tests
+            options:
+                outputdir: robot/animalOS/results
+
+    robot_testdoc:
+        options:
+            path: robot/animalOS/tests
+            output: robot/animalOS/doc/animalOS_tests.html
+
+    run_tests:
+        options:
+            required_org_code_coverage_percent: 75
+
+flows:
+    release_2gp_beta:
+        steps:
+            4:
+                task: None
+    ci_beta:
+        steps:
+            2:
+                task: None
+
+orgs:
+    scratch:
+        dev:
+            config_file: orgs/dev.json
+            days: 30
+            namespaced: False
