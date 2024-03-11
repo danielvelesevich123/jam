@@ -1,6 +1,6 @@
 minimum_cumulusci_version: '3.71.0'
 project:
-    name: animalOS
+    name: jam
     package:
         name: jam
         api_version: '59.0'
@@ -15,13 +15,13 @@ project:
 tasks:
     robot:
         options:
-            suites: robot/animalOS/tests
+            suites: robot/jam/tests
             options:
-                outputdir: robot/animalOS/results
+                outputdir: robot/jam/results
 
     robot_testdoc:
         options:
-            path: robot/animalOS/tests
+            path: robot/jam/tests
             output: robot/animalOS/doc/animalOS_tests.html
 
     run_tests:
@@ -37,7 +37,6 @@ flows:
         steps:
             2:
                 task: None
-
 orgs:
     scratch:
         dev:
