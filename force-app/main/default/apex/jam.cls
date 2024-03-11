@@ -223,7 +223,7 @@ public inherited sharing class jam {
         }
 
         public DTO mapToSObject(String path, SObject sObj, Boolean skipValidation) {
-            if(path == null || sObj == null) {
+            if (path == null || sObj == null) {
                 return null;
             }
 
@@ -281,7 +281,7 @@ public inherited sharing class jam {
         }
 
         public DTO mapFromSObject(String path, SObject sObj) {
-            if(sObj == null) {
+            if (sObj == null) {
                 return null;
             }
 
@@ -308,7 +308,7 @@ public inherited sharing class jam {
         }
 
         public DTO mapFromListSObjects(String path, List<SObject> sObjects, Integer recordsLimit) {
-            if(sObjects == null) {
+            if (sObjects == null) {
                 return null;
             }
 
@@ -573,12 +573,13 @@ public inherited sharing class jam {
     }
 
     //STRUCTURES
-    public inherited sharing virtual class SelectOption{
+    public inherited sharing virtual class SelectOption {
 
         public Object value;
         public String label;
 
-        public SelectOption() {}
+        public SelectOption() {
+        }
 
         public SelectOption(Object value, String label) {
             this.value = value;
@@ -591,7 +592,7 @@ public inherited sharing class jam {
     }
 
     public inherited sharing virtual class ErrorDetails {
-        public String message {get; set;}
+        public String message { get; set; }
 
         public ErrorDetails(String message) {
             this.message = message;
@@ -599,9 +600,9 @@ public inherited sharing class jam {
     }
 
     public inherited sharing class ExceptionDetails extends ErrorDetails {
-        public Integer lineNumber {get; set;}
-        public String stackTraceString {get; set;}
-        public String typeName {get; set;}
+        public Integer lineNumber { get; set; }
+        public String stackTraceString { get; set; }
+        public String typeName { get; set; }
 
         public ExceptionDetails(Exception ex) {
             super(ex.getMessage());
@@ -663,15 +664,24 @@ public inherited sharing class jam {
 
     }
 
-    public inherited sharing class CommonException extends Exception {}
-    public inherited sharing class MissingDataException extends Exception {}
-    public inherited sharing class UtilsException extends Exception {}
-    public inherited sharing class InvalidDataException extends Exception {}
-    public inherited sharing class NotFoundException extends Exception {}
-    public inherited sharing class ValidationException extends Exception {}
-    public inherited sharing class InitException extends Exception {}
-    public inherited sharing class ProcessException extends Exception {}
-    public inherited sharing class AccessException extends Exception {}
+    public inherited sharing class CommonException extends Exception {
+    }
+    public inherited sharing class MissingDataException extends Exception {
+    }
+    public inherited sharing class UtilsException extends Exception {
+    }
+    public inherited sharing class InvalidDataException extends Exception {
+    }
+    public inherited sharing class NotFoundException extends Exception {
+    }
+    public inherited sharing class ValidationException extends Exception {
+    }
+    public inherited sharing class InitException extends Exception {
+    }
+    public inherited sharing class ProcessException extends Exception {
+    }
+    public inherited sharing class AccessException extends Exception {
+    }
 
 
     //UTILS
@@ -681,7 +691,9 @@ public inherited sharing class jam {
                 picklists = new PicklistExtensions();
             }
             return picklists;
-        } private set; }
+        }
+        private set;
+    }
 
     public static DateExtensions dates {
         get {
@@ -689,7 +701,9 @@ public inherited sharing class jam {
                 dates = new DateExtensions();
             }
             return dates;
-        } private set; }
+        }
+        private set;
+    }
 
     public static StringExtensions strings {
         get {
@@ -697,7 +711,9 @@ public inherited sharing class jam {
                 strings = new StringExtensions();
             }
             return strings;
-        } private set; }
+        }
+        private set;
+    }
 
     public static UserExtensions users {
         get {
@@ -705,7 +721,9 @@ public inherited sharing class jam {
                 users = new UserExtensions();
             }
             return users;
-        } private set; }
+        }
+        private set;
+    }
 
     public static SObjectExtensions sObjects {
         get {
@@ -713,7 +731,9 @@ public inherited sharing class jam {
                 sObjects = new SObjectExtensions();
             }
             return sObjects;
-        } private set; }
+        }
+        private set;
+    }
 
     public static URLExtensions URLs {
         get {
@@ -721,7 +741,9 @@ public inherited sharing class jam {
                 URLs = new URLExtensions();
             }
             return URLs;
-        } private set; }
+        }
+        private set;
+    }
 
     public static EncodingExtensions encodings {
         get {
@@ -729,7 +751,9 @@ public inherited sharing class jam {
                 encodings = new EncodingExtensions();
             }
             return encodings;
-        } private set; }
+        }
+        private set;
+    }
 
     public static ArrayExtensions arrays {
         get {
@@ -737,23 +761,29 @@ public inherited sharing class jam {
                 arrays = new ArrayExtensions();
             }
             return arrays;
-        } private set; }
+        }
+        private set;
+    }
 
     public static OrgExtensions orgs {
         get {
-            if (orgs == null){
+            if (orgs == null) {
                 orgs = new OrgExtensions();
             }
             return orgs;
-        } private set; }
+        }
+        private set;
+    }
 
     public static ObjectExtensions objects {
         get {
-            if (objects == null){
+            if (objects == null) {
                 objects = new ObjectExtensions();
             }
             return objects;
-        } private set; }
+        }
+        private set;
+    }
 
     public static TemplateExtensions templates {
         get {
@@ -761,15 +791,9 @@ public inherited sharing class jam {
                 templates = new TemplateExtensions();
             }
             return templates;
-        } private set; }
-
-
-    /**
-     * ==============================================================================================================
-     *                                           PICKLIST EXTENSIONS
-     * ==============================================================================================================
-     */
-
+        }
+        private set;
+    }
 
     public inherited sharing class PicklistExtensions {
 
@@ -784,8 +808,8 @@ public inherited sharing class jam {
                 picklistValues = new Set<String>();
                 List<Schema.PicklistEntry> pickListEntries = sObjectField.getDescribe().getPicklistValues();
 
-                for(Schema.PicklistEntry pickListEntryVar : pickListEntries){
-                    if (excludingValues == null || !excludingValues.contains(pickListEntryVar.getValue())){
+                for (Schema.PicklistEntry pickListEntryVar : pickListEntries) {
+                    if (excludingValues == null || !excludingValues.contains(pickListEntryVar.getValue())) {
                         picklistValues.add(pickListEntryVar.getValue());
                     }
                 }
@@ -794,27 +818,27 @@ public inherited sharing class jam {
             return picklistValues;
         }
 
-        public List<jam.SelectOption> getPicklistValuesAsSelectOptions(Schema.SObjectField sObjectField){
+        public List<jam.SelectOption> getPicklistValuesAsSelectOptions(Schema.SObjectField sObjectField) {
             return getPicklistValuesAsSelectOptions(sObjectField, null);
         }
 
-        public List<jam.SelectOption> getPicklistValuesAsSelectOptions(Schema.SObjectField sObjectField, Set<String> excuding){
+        public List<jam.SelectOption> getPicklistValuesAsSelectOptions(Schema.SObjectField sObjectField, Set<String> excuding) {
             List<jam.SelectOption> selectOptions = new List<jam.SelectOption>();
             List<Schema.PicklistEntry> pickListEntries = sObjectField.getDescribe().getPicklistValues();
 
-            for( Schema.PicklistEntry pickListEntry : pickListEntries){
-                if (excuding == null || !excuding.contains(pickListEntry.getValue())){
+            for (Schema.PicklistEntry pickListEntry : pickListEntries) {
+                if (excuding == null || !excuding.contains(pickListEntry.getValue())) {
                     selectOptions.add(new jam.SelectOption(pickListEntry.getValue(), pickListEntry.getLabel()));
                 }
             }
             return selectOptions;
         }
 
-        public Map<String, List<jam.SelectOption>> getPicklistOptionsMap(Set<SObjectField> fields){
+        public Map<String, List<jam.SelectOption>> getPicklistOptionsMap(Set<SObjectField> fields) {
 
             Map<String, List<jam.SelectOption>> result = new Map<String, List<jam.SelectOption>>();
 
-            for(SObjectField field : fields){
+            for (SObjectField field : fields) {
                 String key = this.getFieldKey(field);
                 result.put(key, this.getPicklistValuesAsSelectOptions(field));
             }
@@ -841,18 +865,18 @@ public inherited sharing class jam {
             return result;
         }
 
-        private String getFieldKey(SObjectField field){
+        private String getFieldKey(SObjectField field) {
             return sObjects.fieldToProperty(field) + 'Options';
         }
 
         public Map<String, List<jam.SelectOption>> getDependentOptions(Schema.SObjectType pType, Schema.SObjectField controllingField, Schema.SObjectField dependentField) {
-            Map<String,List<jam.SelectOption>> mapResults = new Map<String,List<jam.SelectOption>>();
+            Map<String, List<jam.SelectOption>> mapResults = new Map<String, List<jam.SelectOption>>();
 
             final String pControllingFieldName = controllingField.getDescribe().getName();
             final String pDependentFieldName = dependentField.getDescribe().getName();
 
             //verify/get object schema
-            if ( pType == null ) return mapResults;
+            if (pType == null) return mapResults;
             Map<String, Schema.SObjectField> objFieldMap = pType.getDescribe().fields.getMap();
 
             //verify field names
@@ -866,8 +890,8 @@ public inherited sharing class jam {
             objFieldMap = null;
 
             //initialize results mapping
-            for(Integer pControllingIndex=0; pControllingIndex<ctrl_ple.size(); pControllingIndex++){
-                mapResults.put( ctrl_ple[pControllingIndex].getValue(), new List<jam.SelectOption>());
+            for (Integer pControllingIndex = 0; pControllingIndex < ctrl_ple.size(); pControllingIndex++) {
+                mapResults.put(ctrl_ple[pControllingIndex].getValue(), new List<jam.SelectOption>());
             }
             //cater for null and empty
             mapResults.put('', new List<jam.SelectOption>());
@@ -875,15 +899,15 @@ public inherited sharing class jam {
 
             //serialize dep entries
             List<TPicklistEntry> objDS_Entries = new List<TPicklistEntry>();
-            objDS_Entries = (List<TPicklistEntry>)JSON.deserialize(JSON.serialize(dep_ple), List<TPicklistEntry>.class);
+            objDS_Entries = (List<TPicklistEntry>) JSON.deserialize(JSON.serialize(dep_ple), List<TPicklistEntry>.class);
 
             List<Integer> validIndexes;
-            for (TPicklistEntry objDepPLE : objDS_Entries){
+            for (TPicklistEntry objDepPLE : objDS_Entries) {
 
                 validIndexes = cnvBits(objDepPLE.validFor);
 
-                for (Integer validIndex : validIndexes){
-                    mapResults.get( ctrl_ple[validIndex-1].getValue() ).add(new jam.SelectOption(objDepPLE.value, objDepPLE.label));
+                for (Integer validIndex : validIndexes) {
+                    mapResults.get(ctrl_ple[validIndex - 1].getValue()).add(new jam.SelectOption(objDepPLE.value, objDepPLE.label));
                 }
             }
 
@@ -917,13 +941,6 @@ public inherited sharing class jam {
             }
         }
     }
-
-
-    /**
-     * ==============================================================================================================
-     *                                      DATE AND DATETIME EXTENSIONS
-     * ==============================================================================================================
-     */
 
     public inherited sharing class DateExtensions {
 
@@ -1007,13 +1024,13 @@ public inherited sharing class jam {
 
                 datetimeVar = Datetime.newInstance(year, month, day, hour, minute, second);
 
-                if(isGMT){
+                if (isGMT) {
                     datetimeVar = Datetime.newInstanceGmt(year, month, day, hour, minute, second);
                 } else {
                     datetimeVar = Datetime.newInstance(year, month, day, hour, minute, second);
                 }
 
-            } catch(Exception ex) {
+            } catch (Exception ex) {
                 ex.setMessage('Invalid date: ' + datetimeStr + ': ' + ex.getMessage());
                 throw ex;
             }
@@ -1081,7 +1098,7 @@ public inherited sharing class jam {
         // 10:00 AM -> Time.
         public Time timeStringAMPMToTime(String t) {
 
-            if (String.isBlank(t)){
+            if (String.isBlank(t)) {
                 throw new jam.MissingDataException('Argument is null');
             }
 
@@ -1095,12 +1112,12 @@ public inherited sharing class jam {
             Integer hours = Integer.valueOf(hoursStr);
             Integer minutes = Integer.valueOf(minutesStr);
 
-            if('AM'.equals(amPMStr)){
-                if (hours == 12){
+            if ('AM'.equals(amPMStr)) {
+                if (hours == 12) {
                     hours = 0;
                 }
             } else if ('PM'.equals(amPMStr)) {
-                if (hours != 12){
+                if (hours != 12) {
                     hours = hours + 12;
                 }
             }
@@ -1114,70 +1131,70 @@ public inherited sharing class jam {
         }
 
 
-        public Datetime getStartOfDay(Datetime dateTimeVar){
+        public Datetime getStartOfDay(Datetime dateTimeVar) {
             return Datetime.newInstance(dateTimeVar.year(), dateTimeVar.month(), dateTimeVar.day(), 0, 0, 0);
         }
 
-        public Datetime getEndOfDay(Datetime dateTimeVar){
+        public Datetime getEndOfDay(Datetime dateTimeVar) {
             return Datetime.newInstance(dateTimeVar.year(), dateTimeVar.month(), dateTimeVar.day(), 23, 59, 9);
         }
 
-        public Datetime getStartDateOfWeek(Datetime dateTimeVar){
+        public Datetime getStartDateOfWeek(Datetime dateTimeVar) {
             Integer dayOfWeek = Integer.valueOf(dateTimeVar.format('u'));
             Datetime startDateOfWeek = dateTimeVar.addDays(-1 * (dayOfWeek - 1));
             return getStartOfDay(startDateOfWeek);
         }
 
-        public Date getStartDateOfWeek(Date dateVar){
+        public Date getStartDateOfWeek(Date dateVar) {
             return getStartDateOfWeek(dateToDateTime(dateVar)).date();
         }
 
-        public Datetime getEndDateOfWeek(Datetime dateTimeVar){
+        public Datetime getEndDateOfWeek(Datetime dateTimeVar) {
             return getEndOfDay(getStartDateOfWeek(dateTimeVar).addDays(6));
         }
 
-        public Date getEndDateOfWeek(Date dateVar){
+        public Date getEndDateOfWeek(Date dateVar) {
             return getEndDateOfWeek(dateToDateTime(dateVar)).date();
         }
 
-        public Boolean isDateInCurrectWeekOrInFuture(Date dateVar){
+        public Boolean isDateInCurrectWeekOrInFuture(Date dateVar) {
             return dateVar >= getStartDateOfWeek(Date.today());
         }
 
-        public Date getLastDayInMonth(Date dateVar){
+        public Date getLastDayInMonth(Date dateVar) {
             return dateVar.addMonths(1).toStartOfMonth().addDays(-1);
         }
 
-        public Date getLastWorkingDay(Date dateVar){
-            while(!isWorkingDay(dateVar)){
+        public Date getLastWorkingDay(Date dateVar) {
+            while (!isWorkingDay(dateVar)) {
                 dateVar = dateVar.addDays(-1);
             }
             return dateVar;
         }
 
-        public Date getLastDayInFortnight(Date dateVar, Date startDate){
+        public Date getLastDayInFortnight(Date dateVar, Date startDate) {
 
-            if (dateVar < startDate){
+            if (dateVar < startDate) {
                 throw new jam.UtilsException('getLastDayInFortnight error: Date should be greater than Period Start Date');
             }
 
             Date startOfThePeriod = getStartDateOfWeek(startDate);
             Date endOfThePeriod = startOfThePeriod.addDays(13);
 
-            while(dateVar > endOfThePeriod){
+            while (dateVar > endOfThePeriod) {
                 endOfThePeriod = endOfThePeriod.addDays(14);
             }
 
             return endOfThePeriod;
         }
 
-        public Date getFirstDayInFortnight(Date dateVar, Date startDate){
+        public Date getFirstDayInFortnight(Date dateVar, Date startDate) {
             Date endOfThePeriod = getLastDayInFortnight(dateVar, startDate);
             return endOfThePeriod.addDays(-13);
         }
 
         // Deprecated
-        public Date dateInRange(Date dateVar, Date startOfRange, Date endOfRange){
+        public Date dateInRange(Date dateVar, Date startOfRange, Date endOfRange) {
 
             dateVar = startOfRange > dateVar ? startOfRange : dateVar;
             dateVar = endOfRange < dateVar ? endOfRange : dateVar;
@@ -1201,7 +1218,7 @@ public inherited sharing class jam {
             return !(date1end <= date2start || date1start >= date2end);
         }
 
-        public Integer age(Date birthDate, Date onDate){
+        public Integer age(Date birthDate, Date onDate) {
             Date birthDateOnDate = Date.newInstance(
                     onDate.year(),
                     birthDate.month(),
@@ -1211,38 +1228,38 @@ public inherited sharing class jam {
             return Math.max(birthDateOnDate > onDate ? age - 1 : age, 0);
         }
 
-        public Integer age(Date birthDate){
+        public Integer age(Date birthDate) {
             return age(birthDate, Date.today());
         }
 
-        public Date max(List<Date> dates){
+        public Date max(List<Date> dates) {
             Date maxDate;
             for (Date dateVar : dates) {
-                if(maxDate == null || dateVar > maxDate){
+                if (maxDate == null || dateVar > maxDate) {
                     maxDate = dateVar;
                 }
             }
             return maxDate;
         }
 
-        public Date max(Date date1, Date date2){
+        public Date max(Date date1, Date date2) {
             return max(new List<Date>{
                     date1,
                     date2
             });
         }
 
-        public Date min(List<Date> dates){
+        public Date min(List<Date> dates) {
             Date minDate;
             for (Date dateVar : dates) {
-                if(minDate == null || dateVar < minDate){
+                if (minDate == null || dateVar < minDate) {
                     minDate = dateVar;
                 }
             }
             return minDate;
         }
 
-        public Date min(Date date1, Date date2){
+        public Date min(Date date1, Date date2) {
             return min(new List<Date>{
                     date1,
                     date2
@@ -1250,16 +1267,9 @@ public inherited sharing class jam {
         }
     }
 
-
-    /**
-     * ==============================================================================================================
-     *                                         STRING EXTENSIONS
-     * ==============================================================================================================
-     */
-
     public inherited sharing class StringExtensions {
 
-        public String emptyStringIfNull(String str){
+        public String emptyStringIfNull(String str) {
             return String.isBlank(str) ? '' : str;
         }
 
@@ -1272,15 +1282,15 @@ public inherited sharing class jam {
         public String newUuid() {
 
             String giud = newGuid();
-            return giud.substring(0,8)+ '-' + giud.substring(8,12) + '-' + giud.substring(12,16) + '-' + giud.substring(16,20) + '-' + giud.substring(20);
+            return giud.substring(0, 8) + '-' + giud.substring(8, 12) + '-' + giud.substring(12, 16) + '-' + giud.substring(16, 20) + '-' + giud.substring(20);
 
         }
 
-        public String joinNonBlank(List<String> parts, String separator){
+        public String joinNonBlank(List<String> parts, String separator) {
             List<String> notBlankParts = new List<String>();
 
-            for(String part : parts){
-                if(String.isNotBlank(part)){
+            for (String part : parts) {
+                if (String.isNotBlank(part)) {
                     notBlankParts.add(part);
                 }
             }
@@ -1290,15 +1300,8 @@ public inherited sharing class jam {
 
     }
 
-
-    /**
-     * ==============================================================================================================
-     *                                           USER EXTENSIONS
-     * ==============================================================================================================
-     */
-
     public inherited sharing class UserExtensions {
-        public Boolean hasPermSetAssigned(String userId, String permSetName){
+        public Boolean hasPermSetAssigned(String userId, String permSetName) {
             List<String> permSetChunks = permSetName.split('\\.');
             String namespace = permSetChunks.size() > 1 ? permSetChunks[0] : null;
             String name = permSetChunks.size() > 1 ? permSetChunks[1] : permSetChunks[0];
@@ -1312,22 +1315,16 @@ public inherited sharing class jam {
             ] > 0;
         }
 
-        public Boolean hasPermSetAssigned(String permSetName){
+        public Boolean hasPermSetAssigned(String permSetName) {
             return hasPermSetAssigned(UserInfo.getUserId(), permSetName);
         }
 
-        public void assertPermSet(String permSetName, String errorMessage){
-            if(!hasPermSetAssigned(permSetName)){
+        public void assertPermSet(String permSetName, String errorMessage) {
+            if (!hasPermSetAssigned(permSetName)) {
                 throw new jam.AccessException(errorMessage);
             }
         }
     }
-
-    /**
-     * ==============================================================================================================
-     *                                         SOBJECT EXTENSIONS
-     * ==============================================================================================================
-     */
 
     public inherited sharing class SObjectExtensions {
 
@@ -1357,17 +1354,17 @@ public inherited sharing class jam {
             }
         }
 
-        public Set<Id> getIdFieldValues(List<SObject> records, Schema.SObjectField field){
+        public Set<Id> getIdFieldValues(List<SObject> records, Schema.SObjectField field) {
             return getIdFieldValues(records, '' + field);
         }
 
-        public Set<Id> getIdFieldValues(List<SObject> records, String fieldName){
+        public Set<Id> getIdFieldValues(List<SObject> records, String fieldName) {
 
             Set<Id> values = new Set<Id>();
 
-            for(SObject rec : records){
-                Id value = (Id)rec.get(fieldName);
-                if (value != null){
+            for (SObject rec : records) {
+                Id value = (Id) rec.get(fieldName);
+                if (value != null) {
                     values.add(value);
                 }
             }
@@ -1376,17 +1373,17 @@ public inherited sharing class jam {
 
         }
 
-        public Set<String> getStringFieldValues(List<SObject> records, Schema.SObjectField field){
+        public Set<String> getStringFieldValues(List<SObject> records, Schema.SObjectField field) {
             return getStringFieldValues(records, '' + field);
         }
 
-        public Set<String> getStringFieldValues(List<SObject> records, String fieldName){
+        public Set<String> getStringFieldValues(List<SObject> records, String fieldName) {
 
             Set<String> values = new Set<String>();
 
-            for(SObject rec : records){
+            for (SObject rec : records) {
                 String value = rec.get(fieldName) == null ? null : String.valueOf(rec.get(fieldName));
-                if (value != null){
+                if (value != null) {
                     values.add(value);
                 }
             }
@@ -1402,7 +1399,7 @@ public inherited sharing class jam {
         public Map<String, SObject> getSObjectsByAnyFieldMap(List<SObject> sObjects, String sObjectField) {
             Map<String, SObject> resultMap = new Map<String, SObject>();
             for (SObject record : sObjects) {
-                String value = (String)record.get(sObjectField);
+                String value = (String) record.get(sObjectField);
                 if (value != null) {
                     resultMap.put(value, record);
                 }
@@ -1417,12 +1414,14 @@ public inherited sharing class jam {
         public Map<String, List<SObject>> getSObjectsListByAnyFieldMap(List<SObject> sObjects, String sObjectField) {
             Map<String, List<SObject>> resultMap = new Map<String, List<SObject>>();
             for (SObject record : sObjects) {
-                String value = (String)record.get(sObjectField);
+                String value = (String) record.get(sObjectField);
                 if (value != null) {
                     if (resultMap.containsKey(value)) {
                         resultMap.get(value).add(record);
                     } else {
-                        resultMap.put(value, new List<SObject> {record});
+                        resultMap.put(value, new List<SObject>{
+                                record
+                        });
                     }
                 }
             }
@@ -1457,43 +1456,43 @@ public inherited sharing class jam {
             return property;
         }
 
-        public RecordTypeInfo recordTypeByAPIName(SObjectType sObjectTypeVar, String apiName){
+        public RecordTypeInfo recordTypeByAPIName(SObjectType sObjectTypeVar, String apiName) {
             return sObjectTypeVar.getDescribe().getRecordTypeInfosByDeveloperName().get(apiName);
         }
 
-        public Id recordTypeIdByAPIName(SObjectType sObjectTypeVar, String apiName){
+        public Id recordTypeIdByAPIName(SObjectType sObjectTypeVar, String apiName) {
             RecordTypeInfo recType = this.recordTypeByAPIName(sObjectTypeVar, apiName);
-            if(recType == null){
+            if (recType == null) {
                 throw new jam.NotFoundException('No Record Type for: ' + sObjectTypeVar + ' with API Name: ' + apiName);
             }
             return recType.getRecordTypeId();
         }
 
-        public jam.SelectOption toSelectOption(SObject sObj, String valueFieldName, String labelFieldName){
+        public jam.SelectOption toSelectOption(SObject sObj, String valueFieldName, String labelFieldName) {
             return new jam.SelectOption(
                     (String) sObj.get(valueFieldName),
                     (String) sObj.get(labelFieldName)
             );
         }
 
-        public jam.SelectOption toSelectOption(SObject sObj, String labelFieldName){
+        public jam.SelectOption toSelectOption(SObject sObj, String labelFieldName) {
             return new jam.SelectOption(
                     (String) sObj.get('Id'),
                     (String) sObj.get(labelFieldName)
             );
         }
 
-        public jam.SelectOption toSelectOption(SObject sObj){
+        public jam.SelectOption toSelectOption(SObject sObj) {
             return new jam.SelectOption(
                     (String) sObj.get('Id'),
                     (String) sObj.get('Name')
             );
         }
 
-        public List<jam.SelectOption> toSelectOptions(List<SObject> sObjects, String valueFieldName, String labelFieldName){
+        public List<jam.SelectOption> toSelectOptions(List<SObject> sObjects, String valueFieldName, String labelFieldName) {
             List<jam.SelectOption> options = new List<jam.SelectOption>();
 
-            for(SObject sObj : sObjects){
+            for (SObject sObj : sObjects) {
                 options.add(toSelectOption(sObj, valueFieldName, labelFieldName));
             }
 
@@ -1508,11 +1507,11 @@ public inherited sharing class jam {
             return options;
         }
 
-        public List<jam.SelectOption> toSelectOptions(List<SObject> sObjects, String labelFieldName){
+        public List<jam.SelectOption> toSelectOptions(List<SObject> sObjects, String labelFieldName) {
             return toSelectOptions(sObjects, 'Id', labelFieldName);
         }
 
-        public List<jam.SelectOption> toSelectOptions(List<SObject> sObjects){
+        public List<jam.SelectOption> toSelectOptions(List<SObject> sObjects) {
             return toSelectOptions(sObjects, 'Id', 'Name');
         }
 
@@ -1522,7 +1521,7 @@ public inherited sharing class jam {
             record.put(field2, valueOfField1);
         }
 
-        public SObjectType stringToSObjectType(String sObjectTypeStr){
+        public SObjectType stringToSObjectType(String sObjectTypeStr) {
             jam.objects.throwIfBlank(sObjectTypeStr, 'No SObjectType');
 
             SObjectType sObjectTypeVar = Schema.getGlobalDescribe().get(sObjectTypeStr.toLowerCase());
@@ -1596,13 +1595,13 @@ public inherited sharing class jam {
 //            }
 //        }
 
-        public Boolean deduplicate(SObject recordVar){
+        public Boolean deduplicate(SObject recordVar) {
             return deduplicate(recordVar, null);
         }
 
-        public Boolean deduplicate(SObject recordVar, Set<SObjectField> preserveFields){
+        public Boolean deduplicate(SObject recordVar, Set<SObjectField> preserveFields) {
 
-            if(recordVar == null || recordVar.Id != null){
+            if (recordVar == null || recordVar.Id != null) {
                 return false;
             }
 
@@ -1621,8 +1620,8 @@ public inherited sharing class jam {
                         }
                     }
                 }
-            }catch (System.HandledException ex){ //No active duplicate rules are defined for the object type.
-            }catch (Exception ex){
+            } catch (System.HandledException ex) { //No active duplicate rules are defined for the object type.
+            } catch (Exception ex) {
             }
             return false;
         }
@@ -1659,13 +1658,6 @@ public inherited sharing class jam {
     }
 
 
-
-    /**
-     * ==============================================================================================================
-     *                                            URL EXTENSIONS
-     * ==============================================================================================================
-     */
-
     public inherited sharing class URLExtensions {
 
         public String generateReportURL(String reportAPIName, List<String> paramValues) {
@@ -1683,7 +1675,7 @@ public inherited sharing class jam {
             );
 
             List<String> reportParams = new List<String>();
-            if(paramValues != null){
+            if (paramValues != null) {
                 for (Integer i = 0; i < paramValues.size(); i++) {
                     reportParams.add(String.format('fv{0}={1}', new List<String>{
                             '' + (i + 1),
@@ -1702,17 +1694,11 @@ public inherited sharing class jam {
 
         public PageReference listView(Schema.SObjectType destinationSObject) {
             Schema.DescribeSObjectResult destination = destinationSObject.getDescribe();
-            PageReference pageRef = new PageReference('/' + destination.getKeyPrefix() );
+            PageReference pageRef = new PageReference('/' + destination.getKeyPrefix());
             pageRef.setRedirect(true);
             return pageRef;
         }
     }
-
-    /**
-     * ==============================================================================================================
-     *                                          ORGANISATION EXTENSIONS
-     * ==============================================================================================================
-     */
 
     private static Boolean isSandbox;
 
@@ -1720,7 +1706,7 @@ public inherited sharing class jam {
 
         public Boolean isSandbox() {
 
-            if(isSandbox == null){
+            if (isSandbox == null) {
                 List<Organization> organizations = [
                         SELECT IsSandbox
                         FROM Organization
@@ -1740,18 +1726,12 @@ public inherited sharing class jam {
     }
 
 
-    /**
-     * ==============================================================================================================
-     *                                         ENCODING EXTENSIONS
-     * ==============================================================================================================
-     */
-
     public inherited sharing class EncodingExtensions {
 
 //        // map to application/x-www-form-urlencoded.
-        public String mapToFormUrlEncoded(Map<String, String> dataMap){
+        public String mapToFormUrlEncoded(Map<String, String> dataMap) {
             List<String> keyValuePairsEncoded = new List<String>();
-            for(String key : dataMap.keySet()){
+            for (String key : dataMap.keySet()) {
                 keyValuePairsEncoded.add(String.format('{0}={1}', new List<String>{
                         System.EncodingUtil.urlEncode(key, 'UTF-8'),
                         System.EncodingUtil.urlEncode(jam.strings.emptyStringIfNull(dataMap.get(key)), 'UTF-8')
@@ -1784,34 +1764,28 @@ public inherited sharing class jam {
     }
 
 
-    /**
-     * ==============================================================================================================
-     *                                             COLLECTION EXTENSIONS
-     * ==============================================================================================================
-     */
-
     public inherited sharing class ArrayExtensions {
 
         private final Pattern ARRAY_NOTATION = Pattern.compile('\\[(\\d+)]');
 
-        public Object firstOrDefault(List<Object> records, Object defaultVar){
+        public Object firstOrDefault(List<Object> records, Object defaultVar) {
             return records.isEmpty() ? defaultVar : records[0];
         }
 
-        public Object firstOrNull(List<Object> records){
+        public Object firstOrNull(List<Object> records) {
             return firstOrDefault(records, null);
         }
 
-        public Object firstOrException(List<Object> records){
+        public Object firstOrException(List<Object> records) {
             return firstOrException(records, 'The list is empty');
         }
 
-        public Object firstOrException(List<Object> records, String message){
+        public Object firstOrException(List<Object> records, String message) {
             return firstOrException(records, message, null);
         }
 
-        public Object firstOrException(List<Object> records, String message, Type exceptionType){
-            if(records == null || records.isEmpty()){
+        public Object firstOrException(List<Object> records, String message, Type exceptionType) {
+            if (records == null || records.isEmpty()) {
                 Exception ex;
                 if (exceptionType != null) {
                     ex = (Exception) exceptionType.newInstance();
@@ -1824,8 +1798,8 @@ public inherited sharing class jam {
             return records.get(0);
         }
 
-        public void addToSetIfNotBlank(Set<String> dataSet, String value){
-            if (String.isNotBlank(value)){
+        public void addToSetIfNotBlank(Set<String> dataSet, String value) {
+            if (String.isNotBlank(value)) {
                 dataSet.add(value);
             }
         }
@@ -1871,7 +1845,7 @@ public inherited sharing class jam {
                 Boolean isArrayKey = arrayMatcher.matches();
                 Integer index = isArrayKey ? Integer.valueOf(arrayMatcher.group(1)) : null;
 
-                if(isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)){
+                if (isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)) {
                     return null;
                 }
 
@@ -1882,15 +1856,15 @@ public inherited sharing class jam {
                 if (isLastKey == true) {
                     return val;
                 } else {
-                    if(val instanceof List<Object>){
+                    if (val instanceof List<Object>) {
                         tempArr = (List<Object>) val;
                     } else {
                         Object t = isArrayKey ?
                                 tempArr.get(index) :
                                 tempMap.get(key);
 
-                        if(t instanceof Map<String, Object>){
-                            tempMap = (Map<String, Object>)t;
+                        if (t instanceof Map<String, Object>) {
+                            tempMap = (Map<String, Object>) t;
                             tempArr = null;
                         } else {
                             return null;
@@ -1938,7 +1912,7 @@ public inherited sharing class jam {
         }
 
         //Example: jam.arrays.split(new List<Integer>{1, 2, 3, 4, 5, 6, 7, 8, 9 ,10}, 2, List<Integer>.class)
-        public List<List<Object>> split(List<Object> arr, Integer chunkSize, Type chunkListType){
+        public List<List<Object>> split(List<Object> arr, Integer chunkSize, Type chunkListType) {
 
             jam.objects.throwIfNull(chunkSize, 'chunkSize is null');
 
@@ -1948,12 +1922,12 @@ public inherited sharing class jam {
             Integer chunkCounter = 0;
             for (Object item : arr) {
                 if (chunkCounter == 0) {
-                    chunk = (List<Object>)chunkListType.newInstance();
+                    chunk = (List<Object>) chunkListType.newInstance();
                     result.add(chunk);
                 }
                 chunk.add(item);
                 chunkCounter++;
-                if(chunkCounter == chunkSize){
+                if (chunkCounter == chunkSize) {
                     chunkCounter = 0;
                 }
             }
@@ -1962,71 +1936,59 @@ public inherited sharing class jam {
         }
     }
 
-    /**
-     * ==============================================================================================================
-     *                                             OBJECT EXTENSIONS
-     * ==============================================================================================================
-     */
-
     public inherited sharing class ObjectExtensions {
 
-        public void throwIfNull(Object obj, Exception ex){
-            if(obj == null){
+        public void throwIfNull(Object obj, Exception ex) {
+            if (obj == null) {
                 throw ex;
             }
         }
 
-        public void throwIfNull(Object obj, String message){
-            if(obj == null){
+        public void throwIfNull(Object obj, String message) {
+            if (obj == null) {
                 throw new jam.MissingDataException(message);
             }
         }
 
-        public Boolean isBlankValue(Object obj){
-            return obj == null || (obj instanceof String && String.isBlank((String)obj));
+        public Boolean isBlankValue(Object obj) {
+            return obj == null || (obj instanceof String && String.isBlank((String) obj));
         }
 
-        public void throwIfBlank(Object obj, String message){
-            if(this.isBlankValue(obj)){
+        public void throwIfBlank(Object obj, String message) {
+            if (this.isBlankValue(obj)) {
                 throw new jam.MissingDataException(message);
             }
         }
 
-        public Decimal parseDecimal(Object val){
-            if(val == null){
+        public Decimal parseDecimal(Object val) {
+            if (val == null) {
                 return null;
-            } else if(val instanceof Decimal){
-                return (Decimal)val;
-            } else if (val instanceof String && String.isNotBlank((String)val)){
-                return Decimal.valueOf((String)val);
-            } else if (val instanceof Integer){
-                return Decimal.valueOf((Integer)val);
-            } else if (val instanceof Long){
-                return Decimal.valueOf((Long)val);
-            } else if (val instanceof Double){
-                return Decimal.valueOf((Double)val);
+            } else if (val instanceof Decimal) {
+                return (Decimal) val;
+            } else if (val instanceof String && String.isNotBlank((String) val)) {
+                return Decimal.valueOf((String) val);
+            } else if (val instanceof Integer) {
+                return Decimal.valueOf((Integer) val);
+            } else if (val instanceof Long) {
+                return Decimal.valueOf((Long) val);
+            } else if (val instanceof Double) {
+                return Decimal.valueOf((Double) val);
             }
             throw new jam.InvalidDataException('Unable to parse Decimal from: ' + val);
         }
 
-        public Decimal defaultIfNull(Decimal val, Decimal defaultVal){
+        public Decimal defaultIfNull(Decimal val, Decimal defaultVal) {
             return val == null ? defaultVal : val;
         }
 
-        public Integer defaultIfNull(Integer val, Integer defaultVal){
+        public Integer defaultIfNull(Integer val, Integer defaultVal) {
             return val == null ? defaultVal : val;
         }
 
-        public String defaultIfNull(String val, String defaultVal){
+        public String defaultIfNull(String val, String defaultVal) {
             return val == null ? defaultVal : val;
         }
     }
-
-    /**
-     * ==============================================================================================================
-     *                                             TEMPLATE EXTENSIONS
-     * ==============================================================================================================
-     */
 
     public inherited sharing class TemplateExtensions {
 
@@ -2082,56 +2044,51 @@ public inherited sharing class jam {
 
     }
 
-
-    /**
-     * ==============================================================================================================
-     *                                             OTHER UTILITIES
-     * ==============================================================================================================
-     */
-
-    private class TPicklistEntry{
-        public String active {get;set;}
-        public String defaultValue {get;set;}
-        public String label {get;set;}
-        public String value {get;set;}
-        public String validFor {get;set;}
-        public TPicklistEntry(){
+    private class TPicklistEntry {
+        public String active { get; set; }
+        public String defaultValue { get; set; }
+        public String label { get; set; }
+        public String value { get; set; }
+        public String validFor { get; set; }
+        public TPicklistEntry() {
 
         }
     }
 
     // Converts a base64 string into a list of integers representing the encoded bytes
-    public static List<Integer> B64ToBytes (String sIn) {
-        Map<Integer,Integer> base64 = new Map<Integer,Integer>{65=>0,66=>1,67=>2,68=>3,69=>4,70=>5,71=>6,72=>7,73=>8,74=>9,75=>10,76=>11,77=>12,78=>13,79=>14,80=>15,81=>16,82=>17,83=>18,84=>19,85=>20,86=>21,87=>22,88=>23,89=>24,90=>25
-        ,97=>26,98=>27,99=>28,100=>29,101=>30,102=>31,103=>32,104=>33,105=>34,106=>35,107=>36,108=>37,109=>38,110=>39,111=>40,112=>41,113=>42,114=>43,115=>44,116=>45,117=>46,118=>47,119=>48,120=>49,121=>50,122=>51
-        ,48=>52,49=>53,50=>54,51=>55,52=>56,53=>57,54=>58,55=>59,56=>60,57=>61,43=>62,47=>63};
+    public static List<Integer> B64ToBytes(String sIn) {
+        Map<Integer, Integer> base64 = new Map<Integer, Integer>{
+                65 => 0, 66 => 1, 67 => 2, 68 => 3, 69 => 4, 70 => 5, 71 => 6, 72 => 7, 73 => 8, 74 => 9, 75 => 10, 76 => 11, 77 => 12, 78 => 13, 79 => 14, 80 => 15, 81 => 16, 82 => 17, 83 => 18, 84 => 19, 85 => 20, 86 => 21, 87 => 22, 88 => 23, 89 => 24, 90 => 25
+                , 97 => 26, 98 => 27, 99 => 28, 100 => 29, 101 => 30, 102 => 31, 103 => 32, 104 => 33, 105 => 34, 106 => 35, 107 => 36, 108 => 37, 109 => 38, 110 => 39, 111 => 40, 112 => 41, 113 => 42, 114 => 43, 115 => 44, 116 => 45, 117 => 46, 118 => 47, 119 => 48, 120 => 49, 121 => 50, 122 => 51
+                , 48 => 52, 49 => 53, 50 => 54, 51 => 55, 52 => 56, 53 => 57, 54 => 58, 55 => 59, 56 => 60, 57 => 61, 43 => 62, 47 => 63
+        };
 
         List<Integer> lstOut = new List<Integer>();
-        if ( sIn == null || sIn == '' ) return lstOut;
+        if (sIn == null || sIn == '') return lstOut;
 
-        sIn += '='.repeat( 4 - Math.mod( sIn.length(), 4) );
+        sIn += '='.repeat(4 - Math.mod(sIn.length(), 4));
 
-        for ( Integer idx=0; idx < sIn.length(); idx += 4 ) {
-            if ( base64.get(sIn.charAt(idx+1)) != null ) lstOut.add( (base64.get(sIn.charAt(idx)) << 2) | (base64.get(sIn.charAt(idx+1)) >>> 4) );
-            if ( base64.get(sIn.charAt(idx+2)) != null ) lstOut.add( ((base64.get(sIn.charAt(idx+1)) & 15)<<4) | (base64.get(sIn.charAt(idx+2)) >>> 2) );
-            if ( base64.get(sIn.charAt(idx+3)) != null ) lstOut.add( ((base64.get(sIn.charAt(idx+2)) & 3)<<6) | base64.get(sIn.charAt(idx+3)) );
+        for (Integer idx = 0; idx < sIn.length(); idx += 4) {
+            if (base64.get(sIn.charAt(idx + 1)) != null) lstOut.add((base64.get(sIn.charAt(idx)) << 2) | (base64.get(sIn.charAt(idx + 1)) >>> 4));
+            if (base64.get(sIn.charAt(idx + 2)) != null) lstOut.add(((base64.get(sIn.charAt(idx + 1)) & 15) << 4) | (base64.get(sIn.charAt(idx + 2)) >>> 2));
+            if (base64.get(sIn.charAt(idx + 3)) != null) lstOut.add(((base64.get(sIn.charAt(idx + 2)) & 3) << 6) | base64.get(sIn.charAt(idx + 3)));
         }
 
         return lstOut;
     }
 
     // Converts a base64 string into a list of integers indicating at which position the bits are on
-    public static List<Integer> cnvBits (String b64Str) {
+    public static List<Integer> cnvBits(String b64Str) {
         List<Integer> lstOut = new List<Integer>();
-        if ( b64Str == null || b64Str == '' ) return lstOut;
+        if (b64Str == null || b64Str == '') return lstOut;
 
         List<Integer> lstBytes = B64ToBytes(b64Str);
 
         Integer i, b, v;
-        for ( i = 0; i < lstBytes.size(); i++ ) {
+        for (i = 0; i < lstBytes.size(); i++) {
             v = lstBytes[i];
-            for ( b = 1; b <= 8; b++ ) {
-                if ( ( v & 128 ) == 128 ) lstOut.add( (i*8) + b );
+            for (b = 1; b <= 8; b++) {
+                if ((v & 128) == 128) lstOut.add((i * 8) + b);
                 v <<= 1;
             }
         }
