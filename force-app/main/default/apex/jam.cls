@@ -280,16 +280,8 @@ global inherited sharing class jam {
 
             for (Object value : values) {
                 SObject sObj = sObjectTypeVar.newSObject();
-
                 Map<String, Object> dataMap = (Map<String, Object>) value;
-
-                if (this.isVisualforce == true) {
-                    jam.sObjects.populateSObjectFieldsVF(sObj, dataMap, skipValidation);
-                } else {
-                    jam.sObjects.populateSObject(sObj, dataMap, skipValidation);
-                }
-
-                sObjects.add(sObj);
+                sObjects.add(jam.sObjects.populateSObject(sObj, dataMap, skipValidation, this.isVisualforce));
             }
 
             return sObjects;
@@ -314,7 +306,7 @@ global inherited sharing class jam {
                 return null;
             }
 
-            Map<String, Object> dataMap = jam.sObjects.castSObjectToMap(sObj, this.isVisualforce, this.defaultFieldValue, this.isAllFields);
+            Map<String, Object> dataMap = jam.sObjects.castSObjectToMap(sObj, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
 
             jam.objects.setMapValue(
                     this.dto,
@@ -1381,40 +1373,40 @@ global inherited sharing class jam {
         }
 
         public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects) {
-            return castSObjectsToMaps(sObjects, false, null, false);
+            return castSObjectsToMaps(sObjects, null);
         }
 
-        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Boolean isVisualforce, Object defaultFieldValue, Boolean isAllFields) {
+        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue) {
+            return castSObjectsToMaps(sObjects, defaultFieldValue, false);
+        }
+
+        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue, Boolean isAllFields) {
+            return castSObjectsToMaps(sObjects, defaultFieldValue, isAllFields, false);
+        }
+
+        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue, Boolean isAllFields, Boolean isVisualforce) {
             List<Map<String, Object>> sObjMaps = new List<Map<String, Object>>();
 
             for (SObject sObj : sObjects) {
-                Map<String, Object> sObjMap = new Map<String, Object>();
-
-                if (isVisualforce == true) {
-                    sObjMap = this.castSObjectToMapVF(sObj, defaultFieldValue, isAllFields);
-                } else {
-                    sObjMap = this.castSObjectToMap(sObj, defaultFieldValue, isAllFields);
-                }
-
-                sObjMaps.add(sObjMap);
+                sObjMaps.add(this.castSObjectToMap(sObj, defaultFieldValue, isAllFields, isVisualforce));
             }
 
             return sObjMaps;
         }
 
         public Map<String, Object> castSObjectToMap(SObject sObj) {
-            return castSObjectToMap(sObj, null, false);
+            return castSObjectToMap(sObj, null);
         }
 
         public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue) {
             return castSObjectToMap(sObj, defaultFieldValue, false);
         }
 
-        public Map<String, Object> castSObjectToMap(SObject sObj, Boolean isAllFields) {
-            return castSObjectToMap(sObj, null, isAllFields);
+        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
+            return castSObjectToMap(sObj, defaultFieldValue, isAllFields, false);
         }
 
-        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
+        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields, Boolean isVisualforce) {
             Map<String, Object> sObjMap = new Map<String, Object>();
 
             Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
@@ -1428,7 +1420,7 @@ global inherited sharing class jam {
                 if (fieldValue instanceof List<SObject>) {
                     // Skip related Lists
                 } else if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields));
+                    sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields, isVisualforce));
                 } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
                     sObjMap.put(fieldName, fieldValue);
                 } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
