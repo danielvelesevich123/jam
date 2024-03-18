@@ -1,31 +1,86 @@
-public inherited sharing class jam {
-    public abstract class Action {
+global inherited sharing class jam {
+    //TODO: add uow
+    global static jam.Response run(String action, String requestJSON) {
 
+        Savepoint savepoint;
+
+        try {
+            jam.Action actionVar = jam.objects.getAction(action);
+            jam.DTO requestVar = new jam.DTO(requestJSON);
+
+            Boolean doesPerformCallout = actionVar instanceof Database.AllowsCallouts;
+
+            if (doesPerformCallout != true) {
+                savepoint = Database.setSavepoint();
+            }
+
+            return new jam.Response(actionVar.run(requestVar));
+        } catch (Exception ex) {
+            if (savepoint != null) {
+                Database.rollback(savepoint);
+            }
+            throw ex;
+        }
+    }
+
+    @AuraEnabled
+    global static String runAction(String action, String requestJSON) {
+        try {
+            jam.DTO responseVar = jam.run(action, requestJSON);
+            return JSON.serialize(responseVar);
+        } catch (Exception ex) {
+            return new jam.Response(ex).getJSON();
+        }
+    }
+
+    @RemoteAction
+    global static String runAction(String requestJSON) {
+        try {
+            Map<String, Object> request = (Map<String, Object>) JSON.deserializeUntyped(requestJSON);
+
+            if (request.containsKey('action') && request.containsKey('dto')) {
+                return runAction((String) request.get('action'), JSON.serialize(request.get('dto')));
+            }
+
+            return new jam.Response('Invalid request attributes.').getJSON();
+        } catch (Exception ex) {
+            return new jam.Response(ex).getJSON();
+        }
+    }
+
+    global abstract class Action {
         protected DTO request;
         protected DTO response = new DTO(new Map<String, Object>());
 
-        public virtual DTO run(DTO request) {
-            this.request = request;
-            //move to js
-//        this.request.fields = new Set<SObjectField>{
-//                Case.Type
-//        };
-//        this.request.dependentFieldsBySObjectType = new Map<SObjectType, Map<SObjectField, SObjectField>>{
-//            Opportunity.SObjectType => new Map<SObjectField, SObjectField>{
-//                Opportunity.Reason__c => Opportunity.StageName
-//            }
-//        };
+        global virtual DTO run(Map<String, Object> requestMap) {
+            return this.run(new DTO(requestMap));
+        }
 
+        global virtual DTO run(DTO request) {
+            this.request = request;
 //            this.initSelectOptions();
             this.run();
             return this.response;
         }
 
-        public abstract void run();
+        global abstract void run();
 
-        public virtual DTO process(Map<String, Object> requestMap) {
-            return this.run(new DTO(requestMap));
+        //ALIASES
+        public Object get(String path) {
+            return this.request == null ? null : this.request.get(path);
         }
+
+        public jam.Action put(String path, Object value) {
+            this.response.put(path, value);
+            return this;
+        }
+
+        public jam.Action put(Map<String, Object> mapVar) {
+            this.response.put(mapVar);
+            return this;
+        }
+
+        //TODO add notations
 
 //        public virtual void initSelectOptions() {
 //            if (this.request.fields != null && !this.request.fields.isEmpty()) {
@@ -42,7 +97,7 @@ public inherited sharing class jam {
 //        }
     }
 
-    public virtual class DTO {
+    global virtual class DTO {
         public Map<String, Object> dto = new Map<String, Object>();
         public Boolean isVisualforce = false;
         public Boolean isAllFields = false;
@@ -59,21 +114,8 @@ public inherited sharing class jam {
             this.dto = requestMap == null ? this.dto : requestMap;
         }
 
-        public Map<String, Object> getMap() {
-            return this.dto;
-        }
-
         public Object get(String path) {
             return jam.arrays.getMapValue(this.dto, path);
-        }
-
-        public Object get(String path, Type objType) {
-            Object value = this.get(path);
-            return JSON.deserialize(JSON.serialize(value), objType);
-        }
-
-        public String getId(String path) {
-            return (Id) jam.arrays.getMapValue(this.dto, path);
         }
 
         public String getString(String path) {
@@ -82,7 +124,7 @@ public inherited sharing class jam {
         }
 
         public String getRequiredString(String path) {
-            return this.getRequiredString(path, 'The following parameter is missing in the request: ' + path);
+            return this.getRequiredString(path, 'The following parameter is missing in the dto: ' + path);
         }
 
         public String getRequiredString(String path, String errorMessage) {
@@ -98,13 +140,7 @@ public inherited sharing class jam {
 
         public Long getLong(String path) {
             Object val = jam.arrays.getMapValue(this.dto, path);
-            if (val == null) {
-                return null;
-            }
-            if (val instanceof String) {
-                return Long.valueOf((String) val);
-            }
-            return (Long) val;
+            return val == null ? null : (val instanceof String ? Long.valueOf((String) val) : (Long) val);
         }
 
         public Decimal getDecimal(String path) {
@@ -122,7 +158,7 @@ public inherited sharing class jam {
             return Boolean.valueOf(val);
         }
 
-        public Date getISODate(String path) {
+        public Date getDate(String path) {
             String dateStr = this.getString(path);
             return String.isBlank(dateStr) ? null : Date.valueOf(dateStr);
         }
@@ -132,19 +168,19 @@ public inherited sharing class jam {
             if (String.isBlank(timeStr)) {
                 return null;
             }
-            String[] strTimeSplit = timeStr.split(':');
-            Time timeVar = Time.newInstance(Integer.valueOf(strTimeSplit[0]) //hour
-                    , Integer.valueOf(strTimeSplit[1]) //min
-                    , Integer.valueOf(strTimeSplit[2].split('\\.')[0]) //sec
-                    , Integer.valueOf(strTimeSplit[2].split('\\.')[1].removeEnd('Z')));
-            return timeVar;
+            return jam.dates.timeStringToTime(timeStr);
+        }
+
+        public Datetime getDatetime(String path) {
+            String datetimeStr = this.getString(path);
+            return datetimeStr == null ? null : jam.dates.datetimeStringToDatetime(datetimeStr);
         }
 
         public List<Object> getList(String path) {
             return (List<Object>) jam.arrays.getMapValue(this.dto, path);
         }
 
-        public List<String> getListAsStrings(String path) {
+        public List<String> getStrings(String path) {
             List<String> strings = new List<String>();
 
             List<Object> objects = (List<Object>) jam.arrays.getMapValue(this.dto, path);
@@ -160,7 +196,7 @@ public inherited sharing class jam {
             return strings;
         }
 
-        public List<Map<String, Object>> getListAsMap(String path) {
+        public List<Map<String, Object>> getMaps(String path) {
             List<Map<String, Object>> returnList = new List<Map<String, Object>>();
 
             List<Object> objects = getList(path);
@@ -175,11 +211,11 @@ public inherited sharing class jam {
             return returnList;
         }
 
-        public List<DTO> getListAsDTO(String path) {
-            List<Map<String, Object>> maps = getListAsMap(path);
+        public List<DTO> getDTOs(String path) {
+            List<Map<String, Object>> maps = getMaps(path);
 
             if (maps == null) {
-                return null;
+                return new List<DTO>();
             }
 
             List<DTO> returnList = new List<DTO>();
@@ -191,18 +227,15 @@ public inherited sharing class jam {
             return returnList;
         }
 
-        public List<DTO> getListAsDTONonNull(String path) {
-            List<DTO> returnList = getListAsDTO(path);
-
-            if (returnList == null) {
-                return new List<DTO>();
-            }
-
-            return returnList;
-        }
-
         public Boolean has(String path) {
             return jam.arrays.mapContains(this.dto, path);
+        }
+
+        public DTO put(Map<String, Object> mapVar) {
+            for(String key : mapVar.keySet()) {
+                jam.arrays.setMapValue(this.dto, key, mapVar.get(key));
+            }
+            return this;
         }
 
         public DTO put(String path, Object value) {
@@ -210,19 +243,22 @@ public inherited sharing class jam {
             return this;
         }
 
-        public DTO mapToSObject(SObject sObj) {
-            return mapToSObject(sObj, false);
+        public DTO getSObject(SObject sObj) {
+            return getSObject(sObj, false);
         }
 
-        public DTO mapToSObject(String path, SObject sObj) {
-            return mapToSObject(path, sObj, false);
+
+        //TODO: use SObjectType instead of instance. Contact contactVar = this.getSObject('contact', Contact.SObjectType);
+
+        public DTO getSObject(String path, SObject sObj) {
+            return getSObject(path, sObj, false);
         }
 
-        public DTO mapToSObject(SObject sObj, Boolean skipValidation) {
-            return mapToSObject('', sObj, skipValidation);
+        public DTO getSObject(SObject sObj, Boolean skipValidation) {
+            return getSObject('', sObj, skipValidation);
         }
 
-        public DTO mapToSObject(String path, SObject sObj, Boolean skipValidation) {
+        public DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
             if (path == null || sObj == null) {
                 return null;
             }
@@ -237,10 +273,10 @@ public inherited sharing class jam {
             if (value != null) {
                 Map<String, Object> dataMap = (Map<String, Object>) value;
 
-                if (this.isVisualforce) {
+                if (this.isVisualforce == true) {
                     this.populateSObjectFieldsVF(sObj, dataMap, skipValidation);
                 } else {
-                    this.populateSObjectFields(sObj, dataMap, skipValidation);
+                    this.populateSObject(sObj, dataMap, skipValidation);
                 }
 
             }
@@ -249,11 +285,12 @@ public inherited sharing class jam {
         }
 
 
-        public List<SObject> mapToListSObjects(String path, SObjectType sObjectTypeVar) {
-            return mapToListSObjects(path, sObjectTypeVar, false);
+        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
+            return getSObjects(path, sObjectTypeVar, false);
         }
 
-        public List<SObject> mapToListSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
+        //TODO: DTO constructor(arrayPath, JSONarray);
+        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
 
             List<Object> values = (List<Object>) jam.arrays.getMapValue(this.dto, path);
 
@@ -268,10 +305,10 @@ public inherited sharing class jam {
 
                 Map<String, Object> dataMap = (Map<String, Object>) value;
 
-                if (this.isVisualforce) {
+                if (this.isVisualforce == true) {
                     this.populateSObjectFieldsVF(sObj, dataMap, skipValidation);
                 } else {
-                    this.populateSObjectFields(sObj, dataMap, skipValidation);
+                    this.populateSObject(sObj, dataMap, skipValidation);
                 }
 
                 sObjects.add(sObj);
@@ -280,17 +317,18 @@ public inherited sharing class jam {
             return sObjects;
         }
 
-        public DTO mapFromSObject(String path, SObject sObj) {
+        //TODO: this.isVisualforce
+        public DTO putSObject(String path, SObject sObj) {
             if (sObj == null) {
                 return null;
             }
 
             Map<String, Object> dataMap;
 
-            if (this.isVisualforce) {
-                dataMap = this.getSObjectAsMapVF(sObj);
+            if (this.isVisualforce == true) {
+                dataMap = this.castSObjectToMapVF(sObj);
             } else {
-                dataMap = this.getSObjectAsMap(sObj);
+                dataMap = this.castSObjectToMap(sObj);
 
             }
 
@@ -303,11 +341,11 @@ public inherited sharing class jam {
             return this;
         }
 
-        public DTO mapFromListSObjects(String path, List<SObject> sObjects) {
-            return this.mapFromListSObjects(path, sObjects, null);
+        public DTO putSObjects(String path, List<SObject> sObjects) {
+            return this.putSObjects(path, sObjects, null);
         }
 
-        public DTO mapFromListSObjects(String path, List<SObject> sObjects, Integer recordsLimit) {
+        public DTO putSObjects(String path, List<SObject> sObjects, Integer recordsLimit) {
             if (sObjects == null) {
                 return null;
             }
@@ -324,30 +362,30 @@ public inherited sharing class jam {
                 String limitPath = path + '.limit';
                 String countPath = path + '.count';
 
-                this.mapAnyValue(hasMorePath, hasMore);
-                this.mapAnyValue(limitPath, recordsLimit);
-                this.mapAnyValue(countPath, sObjects.size());
+                this.put(hasMorePath, hasMore);
+                this.put(limitPath, recordsLimit);
+                this.put(countPath, sObjects.size());
             }
 
             jam.arrays.setMapValue(
                     this.dto,
                     recordsPath,
-                    this.getSObjectsAsMaps(sObjects)
+                    this.castSObjectsToMaps(sObjects)
             );
 
             return this;
         }
 
-        public List<Map<String, Object>> getSObjectsAsMaps(List<SObject> sObjects) {
+        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects) {
             List<Map<String, Object>> sObjMaps = new List<Map<String, Object>>();
 
             for (SObject sObj : sObjects) {
                 Map<String, Object> sObjMap = new Map<String, Object>();
 
-                if (this.isVisualforce) {
-                    sObjMap = this.getSObjectAsMapVF(sObj);
+                if (this.isVisualforce == true) {
+                    sObjMap = this.castSObjectToMapVF(sObj);
                 } else {
-                    sObjMap = this.getSObjectAsMap(sObj);
+                    sObjMap = this.castSObjectToMap(sObj);
                 }
 
                 sObjMaps.add(sObjMap);
@@ -356,12 +394,7 @@ public inherited sharing class jam {
             return sObjMaps;
         }
 
-        public DTO mapAnyValue(String path, Object value) {
-            jam.arrays.setMapValue(this.dto, path, value);
-            return this;
-        }
-
-        public Map<String, Object> getSObjectAsMap(SObject sObj) {
+        public Map<String, Object> castSObjectToMap(SObject sObj) {
             Map<String, Object> sObjMap = new Map<String, Object>();
 
             Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
@@ -371,10 +404,11 @@ public inherited sharing class jam {
                 Object fieldValue = populatedFieldsMap.get(fieldName);
                 SObjectField fieldVar = fieldsMap.get(fieldName);
 
+                //TODO: review ICN
                 if (fieldValue instanceof List<SObject>) {
                     // Skip related Lists
                 } else if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.getSObjectAsMap((SObject) fieldValue));
+                    sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue));
                 } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
                     sObjMap.put(fieldName, fieldValue);
                 } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
@@ -398,7 +432,8 @@ public inherited sharing class jam {
             return sObjMap;
         }
 
-        public Map<String, Object> getSObjectAsMapVF(SObject sObj) {
+        //TODO join with castSObjectToMap
+        public Map<String, Object> castSObjectToMapVF(SObject sObj) {
             Map<String, Object> sObjMap = new Map<String, Object>();
 
             Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
@@ -411,7 +446,7 @@ public inherited sharing class jam {
                 if (fieldValue instanceof List<SObject>) {
                     // Skip related Lists
                 } else if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.getSObjectAsMapVF((SObject) fieldValue));
+                    sObjMap.put(fieldName, this.castSObjectToMapVF((SObject) fieldValue));
                 } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
                     sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
                 } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
@@ -436,7 +471,7 @@ public inherited sharing class jam {
             return sObjMap;
         }
 
-        private SObject populateSObjectFields(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
+        private SObject populateSObject(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
             Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
             for (String property : sObjMap.keySet()) {
 
@@ -451,7 +486,6 @@ public inherited sharing class jam {
 
                             if (fieldDisplayType == DisplayType.DATE) {
                                 fieldValue = Date.valueOf(fieldValueStr);
-                                //fieldValue = JSON.deserialize(fieldValueStr, Date.class);
                             } else if (fieldDisplayType == DisplayType.DATETIME) {
                                 if (!fieldValueStr.startsWith('"')) {
                                     fieldValueStr = '"' + fieldValueStr;
@@ -459,7 +493,14 @@ public inherited sharing class jam {
                                 if (!fieldValueStr.endsWith('"')) {
                                     fieldValueStr = fieldValueStr + '"';
                                 }
-                                fieldValue = JSON.deserialize(fieldValueStr, Datetime.class);
+                                fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
+                            } else if (fieldDisplayType == DisplayType.TIME) {
+                                //TODO: check AM PM
+                                if(fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM')) {
+                                    fieldValue = jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase());
+                                } else {
+                                    fieldValue = jam.dates.timeStringToTime(fieldValueStr);
+                                }
                             } else if (new Set<DisplayType>{
                                     DisplayType.DOUBLE, DisplayType.CURRENCY
                             }.contains(fieldDisplayType)) {
@@ -499,6 +540,7 @@ public inherited sharing class jam {
             return sObj;
         }
 
+        //TODO: review and merge with populateSObjectFields
         private SObject populateSObjectFieldsVF(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
             Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
             for (String property : sObjMap.keySet()) {
@@ -572,6 +614,66 @@ public inherited sharing class jam {
         }
     }
 
+    global inherited sharing virtual class Response extends jam.DTO {
+
+        global Boolean isValid = true;
+        global jam.ErrorDetails error;
+        global List<jam.ErrorDetails> errors = new List<jam.ErrorDetails>();
+
+        global Response(Map<String, Object> requestMap) {
+            super(requestMap);
+        }
+
+        global Response(jam.DTO requestDTO) {
+            super(requestDTO.dto);
+        }
+
+        global Response(Exception ex) {
+            this.isValid = (ex == null);
+
+            if (ex != null) {
+                this.error = new jam.ExceptionDetails(ex);
+                this.errors.add(this.error);
+            }
+        }
+
+        global Response(List<Exception> exs) {
+            this(exs == null || exs.isEmpty() ? null : exs.get(0));
+
+            this.errors = new List<jam.ErrorDetails>();
+            for (Exception ex : exs) {
+                this.errors.add(new jam.ExceptionDetails(ex));
+            }
+        }
+
+        global Response(List<String> messages) {
+            this(String.join(messages, ', '));
+
+            this.errors = new List<jam.ErrorDetails>();
+            for (String message : messages) {
+                this.errors.add(new jam.ErrorDetails(message));
+            }
+        }
+
+        global Response(String message) {
+            this.setError(message);
+        }
+
+        global void setError(String message) {
+            this.isValid = (String.isBlank(message));
+
+            if (String.isNotBlank(message)) {
+                this.error = new jam.ErrorDetails(message);
+                this.errors.add(this.error);
+            }
+        }
+
+        global String getJSON() {
+            return JSON.serialize(this);
+        }
+
+    }
+
     //STRUCTURES
     public inherited sharing virtual class SelectOption {
 
@@ -631,8 +733,7 @@ public inherited sharing class jam {
         }
     }
 
-    public inherited sharing virtual class MergeFieldExpression extends Expression {
-
+    public virtual class MergeFieldExpression extends Expression {
         public MergeFieldExpression(String source) {
             super(source);
         }
@@ -641,48 +742,19 @@ public inherited sharing class jam {
             this.params.add(this.source);
         }
 
-        protected override String getValue(DTO dtoVar) {
+        protected override String getValue(jam.DTO dtoVar) {
             String path = this.params.get(0);
             String value = jam.objects.defaultIfNull(dtoVar.getString(path), '');
             return value;
         }
-
     }
 
-    public interface ISerializable {
-        String serialize();
-    }
-
-    public abstract class Serializable implements ISerializable {
-
-        public virtual String serialize() {
-            return JSON.serialize(this);
-        }
-        public String getJSON() {
-            return this.serialize();
-        }
-
-    }
-
-    public inherited sharing class CommonException extends Exception {
-    }
     public inherited sharing class MissingDataException extends Exception {
-    }
-    public inherited sharing class UtilsException extends Exception {
-    }
-    public inherited sharing class InvalidDataException extends Exception {
-    }
-    public inherited sharing class NotFoundException extends Exception {
     }
     public inherited sharing class ValidationException extends Exception {
     }
-    public inherited sharing class InitException extends Exception {
-    }
     public inherited sharing class ProcessException extends Exception {
     }
-    public inherited sharing class AccessException extends Exception {
-    }
-
 
     //UTILS
     public static PicklistExtensions picklists {
@@ -1095,11 +1167,10 @@ public inherited sharing class jam {
             );
         }
 
-        // 10:00 AM -> Time.
         public Time timeStringAMPMToTime(String t) {
 
             if (String.isBlank(t)) {
-                throw new jam.MissingDataException('Argument is null');
+                throw new jam.MissingDataException('Time Argument is null');
             }
 
             List<String> timeParts = t.split(' ');
@@ -1130,6 +1201,14 @@ public inherited sharing class jam {
             );
         }
 
+        public Datetime datetimeStringToDatetime(String dt) {
+            if (String.isBlank(dt)) {
+                throw new jam.MissingDataException('Datetime string argument is null');
+            }
+
+            return (Datetime) JSON.deserialize(dt, Datetime.class);
+        }
+
 
         public Datetime getStartOfDay(Datetime dateTimeVar) {
             return Datetime.newInstance(dateTimeVar.year(), dateTimeVar.month(), dateTimeVar.day(), 0, 0, 0);
@@ -1157,7 +1236,7 @@ public inherited sharing class jam {
             return getEndDateOfWeek(dateToDateTime(dateVar)).date();
         }
 
-        public Boolean isDateInCurrectWeekOrInFuture(Date dateVar) {
+        public Boolean isDateInCurrentWeekOrInFuture(Date dateVar) {
             return dateVar >= getStartDateOfWeek(Date.today());
         }
 
@@ -1173,9 +1252,9 @@ public inherited sharing class jam {
         }
 
         public Date getLastDayInFortnight(Date dateVar, Date startDate) {
-
+            //TODO: review AFEA utils
             if (dateVar < startDate) {
-                throw new jam.UtilsException('getLastDayInFortnight error: Date should be greater than Period Start Date');
+                throw new jam.ProcessException('getLastDayInFortnight error: Date should be greater than Period Start Date');
             }
 
             Date startOfThePeriod = getStartDateOfWeek(startDate);
@@ -1191,15 +1270,6 @@ public inherited sharing class jam {
         public Date getFirstDayInFortnight(Date dateVar, Date startDate) {
             Date endOfThePeriod = getLastDayInFortnight(dateVar, startDate);
             return endOfThePeriod.addDays(-13);
-        }
-
-        // Deprecated
-        public Date dateInRange(Date dateVar, Date startOfRange, Date endOfRange) {
-
-            dateVar = startOfRange > dateVar ? startOfRange : dateVar;
-            dateVar = endOfRange < dateVar ? endOfRange : dateVar;
-
-            return dateVar;
         }
 
         public Date detectDateInRange(Date firstDate, Date secondDate, Date thirdDate) {
@@ -1274,7 +1344,7 @@ public inherited sharing class jam {
         }
 
         public String newGuid() {
-
+            //TODO: use new guid logic added by sf
             return EncodingUtil.convertToHex(Crypto.generateAesKey(128));
 
         }
@@ -1305,13 +1375,14 @@ public inherited sharing class jam {
             List<String> permSetChunks = permSetName.split('\\.');
             String namespace = permSetChunks.size() > 1 ? permSetChunks[0] : null;
             String name = permSetChunks.size() > 1 ? permSetChunks[1] : permSetChunks[0];
+
             return [
                     SELECT COUNT()
                     FROM PermissionSetAssignment
                     WHERE AssigneeId = :userId
                     AND PermissionSet.Name = :name
                     AND PermissionSet.NamespacePrefix = :namespace
-                    WITH SECURITY_ENFORCED
+                    WITH USER_MODE
             ] > 0;
         }
 
@@ -1321,7 +1392,7 @@ public inherited sharing class jam {
 
         public void assertPermSet(String permSetName, String errorMessage) {
             if (!hasPermSetAssigned(permSetName)) {
-                throw new jam.AccessException(errorMessage);
+                throw new jam.ProcessException(errorMessage);
             }
         }
     }
@@ -1350,7 +1421,7 @@ public inherited sharing class jam {
                 );
                 records = decision.getRecords();
             } catch (System.NoAccessException ex) {
-                throw new jam.AccessException('No ' + accessType + ' Access to entity of type: ' + sObjTypeVar);
+                throw new jam.ProcessException('No ' + accessType + ' Access to entity of type: ' + sObjTypeVar);
             }
         }
 
@@ -1463,7 +1534,7 @@ public inherited sharing class jam {
         public Id recordTypeIdByAPIName(SObjectType sObjectTypeVar, String apiName) {
             RecordTypeInfo recType = this.recordTypeByAPIName(sObjectTypeVar, apiName);
             if (recType == null) {
-                throw new jam.NotFoundException('No Record Type for: ' + sObjectTypeVar + ' with API Name: ' + apiName);
+                throw new jam.MissingDataException('No Record Type for: ' + sObjectTypeVar + ' with API Name: ' + apiName);
             }
             return recType.getRecordTypeId();
         }
@@ -1626,6 +1697,8 @@ public inherited sharing class jam {
             return false;
         }
 
+        //TODO: add deduplicate by specific rule
+
         public Map<String, Object> getSObjectDescribe(List<SObjectType> sObjectTypes) {
             DTO dto = new DTO();
 
@@ -1653,10 +1726,9 @@ public inherited sharing class jam {
                 }
             }
 
-            return dto.getMap();
+            return dto.dto;
         }
     }
-
 
     public inherited sharing class URLExtensions {
 
@@ -1671,7 +1743,7 @@ public inherited sharing class jam {
                     'WHERE DeveloperName = :reportAPIName AND NamespacePrefix = \'maica\'';
 
             Report reportId = (Report) jam.arrays.firstOrNull(
-                    Database.query(reportQuery + (isSecurityEnforced == true ? ' WITH SECURITY_ENFORCED' : ''))
+                    Database.query(reportQuery + (isSecurityEnforced == true ? ' WITH USER_MODE' : ''))
             );
 
             List<String> reportParams = new List<String>();
@@ -1700,6 +1772,7 @@ public inherited sharing class jam {
         }
     }
 
+    //TODO: remove OrgExtensions and add getter
     private static Boolean isSandbox;
 
     public inherited sharing class OrgExtensions {
@@ -1725,10 +1798,8 @@ public inherited sharing class jam {
 
     }
 
-
     public inherited sharing class EncodingExtensions {
 
-//        // map to application/x-www-form-urlencoded.
         public String mapToFormUrlEncoded(Map<String, String> dataMap) {
             List<String> keyValuePairsEncoded = new List<String>();
             for (String key : dataMap.keySet()) {
@@ -1762,7 +1833,6 @@ public inherited sharing class jam {
         }
 
     }
-
 
     public inherited sharing class ArrayExtensions {
 
@@ -1936,60 +2006,6 @@ public inherited sharing class jam {
         }
     }
 
-    public inherited sharing class ObjectExtensions {
-
-        public void throwIfNull(Object obj, Exception ex) {
-            if (obj == null) {
-                throw ex;
-            }
-        }
-
-        public void throwIfNull(Object obj, String message) {
-            if (obj == null) {
-                throw new jam.MissingDataException(message);
-            }
-        }
-
-        public Boolean isBlankValue(Object obj) {
-            return obj == null || (obj instanceof String && String.isBlank((String) obj));
-        }
-
-        public void throwIfBlank(Object obj, String message) {
-            if (this.isBlankValue(obj)) {
-                throw new jam.MissingDataException(message);
-            }
-        }
-
-        public Decimal parseDecimal(Object val) {
-            if (val == null) {
-                return null;
-            } else if (val instanceof Decimal) {
-                return (Decimal) val;
-            } else if (val instanceof String && String.isNotBlank((String) val)) {
-                return Decimal.valueOf((String) val);
-            } else if (val instanceof Integer) {
-                return Decimal.valueOf((Integer) val);
-            } else if (val instanceof Long) {
-                return Decimal.valueOf((Long) val);
-            } else if (val instanceof Double) {
-                return Decimal.valueOf((Double) val);
-            }
-            throw new jam.InvalidDataException('Unable to parse Decimal from: ' + val);
-        }
-
-        public Decimal defaultIfNull(Decimal val, Decimal defaultVal) {
-            return val == null ? defaultVal : val;
-        }
-
-        public Integer defaultIfNull(Integer val, Integer defaultVal) {
-            return val == null ? defaultVal : val;
-        }
-
-        public String defaultIfNull(String val, String defaultVal) {
-            return val == null ? defaultVal : val;
-        }
-    }
-
     public inherited sharing class TemplateExtensions {
 
         public String compose(String template, Map<String, Object> dtoMap) {
@@ -2044,6 +2060,90 @@ public inherited sharing class jam {
 
     }
 
+    global inherited sharing class ObjectExtensions {
+
+        global jam.Action getAction(String actionName) {
+            return getAction(actionName, 'No Processor Type with Name: ' + actionName);
+        }
+
+        global jam.Action getAction(String actionName, String errorMessage) {
+            String namespace;
+            String className = actionName;
+
+            List<String> actionParts = actionName.split('.');
+
+            if(actionParts.size() == 2) {
+                namespace = actionParts[0];
+                className = actionParts[0];
+            }
+
+            Type actionType = Type.forName(namespace, className);
+            if (actionType == null) {
+                throw new jam.ProcessException(errorMessage);
+            }
+
+            jam.Action actionVar = (jam.Action) actionType.newInstance();
+
+            if (actionVar == null) {
+                throw new jam.ProcessException('Unable to create Processor instance of type name: ' + actionName);
+            }
+
+            return actionVar;
+        }
+
+        public void throwIfNull(Object obj, Exception ex) {
+            if (obj == null) {
+                throw ex;
+            }
+        }
+
+        public void throwIfNull(Object obj, String message) {
+            if (obj == null) {
+                throw new jam.MissingDataException(message);
+            }
+        }
+
+        public Boolean isBlankValue(Object obj) {
+            return obj == null || (obj instanceof String && String.isBlank((String) obj));
+        }
+
+        public void throwIfBlank(Object obj, String message) {
+            if (this.isBlankValue(obj)) {
+                throw new jam.MissingDataException(message);
+            }
+        }
+
+        public Decimal parseDecimal(Object val) {
+            if (val == null) {
+                return null;
+            } else if (val instanceof Decimal) {
+                return (Decimal) val;
+            } else if (val instanceof String && String.isNotBlank((String) val)) {
+                return Decimal.valueOf((String) val);
+            } else if (val instanceof Integer) {
+                return Decimal.valueOf((Integer) val);
+            } else if (val instanceof Long) {
+                return Decimal.valueOf((Long) val);
+            } else if (val instanceof Double) {
+                return Decimal.valueOf((Double) val);
+            }
+            throw new jam.ProcessException('Unable to parse Decimal from: ' + val);
+        }
+
+        public Decimal defaultIfNull(Decimal val, Decimal defaultVal) {
+            return val == null ? defaultVal : val;
+        }
+
+        public Integer defaultIfNull(Integer val, Integer defaultVal) {
+            return val == null ? defaultVal : val;
+        }
+
+        public String defaultIfNull(String val, String defaultVal) {
+            return val == null ? defaultVal : val;
+        }
+    }
+
+    //TODO: move to inner
     private class TPicklistEntry {
         public String active { get; set; }
         public String defaultValue { get; set; }

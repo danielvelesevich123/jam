@@ -27,6 +27,12 @@ tasks:
     run_tests:
         options:
             required_org_code_coverage_percent: 75
+    enable_debug_mode:
+        description: Enable Debug Mode for Admin
+        class_path: cumulusci.tasks.apex.anon.AnonymousApexTask
+        group: projectName
+        options:
+            apex: "update new User(Id = [SELECT Id FROM User WHERE Profile.Name = 'System Administrator' LIMIT 1][0].Id, UserPreferencesUserDebugModePref = true, UserPreferencesApexPagesDeveloperMode = true);"
 
 flows:
     release_2gp_beta:
@@ -37,6 +43,10 @@ flows:
         steps:
             2:
                 task: None
+    dev_org:
+        steps:
+            4:
+                task: enable_debug_mode
 orgs:
     scratch:
         dev:
