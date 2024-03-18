@@ -1420,7 +1420,7 @@ global inherited sharing class jam {
                     continue;
                 }
 
-                if (isVisualforce && fieldValue != null && fieldVar != null) {
+                if (isVisualforce == true && fieldValue != null && fieldVar != null) {
                     if (fieldVar.getDescribe().type == DisplayType.DATE) {
                         sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
                         continue;
