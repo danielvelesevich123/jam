@@ -179,17 +179,12 @@ global inherited sharing class jam {
             return datetimeStr == null ? null : jam.dates.datetimeStringToDatetime(datetimeStr);
         }
 
-        public DTO getSObject(SObject sObj) {
-            return getSObject(sObj, false);
+        public DTO getSObject(String path, SObjectType sObjectTypeVar) {
+            return getSObject(path, sObjectTypeVar.newSObject(), false);
         }
-        //TODO: use SObjectType instead of instance. Contact contactVar = this.getSObject('contact', Contact.SObjectType);
 
         public DTO getSObject(String path, SObject sObj) {
             return getSObject(path, sObj, false);
-        }
-
-        public DTO getSObject(SObject sObj, Boolean skipValidation) {
-            return getSObject('', sObj, skipValidation);
         }
 
         public DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
