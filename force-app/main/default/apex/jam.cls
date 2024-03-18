@@ -85,7 +85,7 @@ global inherited sharing class jam {
 
     global virtual class DTO {
         public Map<String, Object> dto = new Map<String, Object>();
-        public Boolean isVisualforce = false;//TODO move setIsVisualforce to setter
+        public Boolean isVisualforce = false;
         public Boolean isAllFields = false;
         public Object defaultFieldValue = '';
 
@@ -1367,7 +1367,7 @@ global inherited sharing class jam {
         }
 
         public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects) {
-            return castSObjectsToMaps(sObjects, null);
+            return castSObjectsToMaps(sObjects, '');
         }
 
         public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue) {
@@ -1389,7 +1389,7 @@ global inherited sharing class jam {
         }
 
         public Map<String, Object> castSObjectToMap(SObject sObj) {
-            return castSObjectToMap(sObj, null);
+            return castSObjectToMap(sObj, '');
         }
 
         public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue) {
