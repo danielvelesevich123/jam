@@ -295,7 +295,6 @@ global inherited sharing class jam {
             return this;
         }
 
-        //TODO: this.isVisualforce
         public DTO putSObject(String path, SObject sObj) {
             if (sObj == null) {
                 return null;
@@ -1411,26 +1410,34 @@ global inherited sharing class jam {
                 Object fieldValue = populatedFieldsMap.get(fieldName);
                 SObjectField fieldVar = fieldsMap.get(fieldName);
 
-                //TODO: review ICN
                 if (fieldValue instanceof List<SObject>) {
                     // Skip related Lists
-                } else if (fieldValue instanceof SObject) {
+                    continue;
+                }
+
+                if (fieldValue instanceof SObject) {
                     sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields, isVisualforce));
-                } else if (isVisualforce && fieldValue != null && fieldVar != null) {
+                    continue;
+                }
+
+                if (isVisualforce && fieldValue != null && fieldVar != null) {
                     if (fieldVar.getDescribe().type == DisplayType.DATE) {
                         sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
+                        continue;
                     }
 
                     if (fieldVar.getDescribe().type == DisplayType.DATETIME) {
                         sObjMap.put(fieldName, ((Datetime) fieldValue).format());
+                        continue;
                     }
 
                     if (fieldVar.getDescribe().type == DisplayType.TIME) {
                         sObjMap.put(fieldName, Datetime.newInstance(Date.today(), (Time) fieldValue).format('hh:mm a'));
+                        continue;
                     }
-                } else {
-                    sObjMap.put(fieldName, fieldValue == null ? defaultFieldValue : fieldValue);
                 }
+
+                sObjMap.put(fieldName, fieldValue == null ? defaultFieldValue : fieldValue);
             }
 
             if (isAllFields == true) {
@@ -1459,8 +1466,16 @@ global inherited sharing class jam {
                             String fieldValueStr = (String) fieldValue;
 
                             if (fieldDisplayType == DisplayType.DATE) {
-                                fieldValue = Date.valueOf(fieldValueStr);
-                            } else if (fieldDisplayType == DisplayType.DATETIME) {
+                                fieldValue = isVisualforce == true ? jam.dates.parseDateAusFormat(fieldValueStr) : Date.valueOf(fieldValueStr);
+                                continue;
+                            }
+
+                            if (fieldDisplayType == DisplayType.DATETIME) {
+                                if(isVisualforce == true) {
+                                    fieldValue = jam.dates.parseDatetimeAusFormat(fieldValueStr);
+                                    continue;
+                                }
+
                                 if (!fieldValueStr.startsWith('"')) {
                                     fieldValueStr = '"' + fieldValueStr;
                                 }
@@ -1468,106 +1483,66 @@ global inherited sharing class jam {
                                     fieldValueStr = fieldValueStr + '"';
                                 }
                                 fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
-                            } else if (fieldDisplayType == DisplayType.TIME) {
-                                if (fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM')) {
-                                    fieldValue = jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase());
-                                } else {
-                                    fieldValue = jam.dates.timeStringToTime(fieldValueStr);
+                                continue;
+                            }
+
+                            if (fieldDisplayType == DisplayType.TIME) {
+                                if(isVisualforce == true) {
+                                    Datetime dt = jam.dates.parseDatetimeAnyFormat(fieldValueStr, 'hh:mm a');
+                                    fieldValue = dt == null ? fieldValue : dt.time();
+                                    continue;
                                 }
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.DOUBLE, DisplayType.CURRENCY
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Decimal.valueOf(fieldValueStr);
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.INTEGER
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Integer.valueOf(fieldValueStr);
-                            } else if (DisplayType.BASE64 == fieldDisplayType) {
+
+                                fieldValue = fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM') ?
+                                        jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase()) :
+                                        jam.dates.timeStringToTime(fieldValueStr);
+                                continue;
+                            }
+
+                            if (DisplayType.DOUBLE == fieldDisplayType || DisplayType.CURRENCY == fieldDisplayType) {
+                                fieldValue = Decimal.valueOf(fieldValueStr);
+                                continue;
+                            }
+
+                            if (DisplayType.INTEGER == fieldDisplayType) {
+                                fieldValue = Integer.valueOf(fieldValueStr);
+                                continue;
+                            }
+
+                            if (DisplayType.BASE64 == fieldDisplayType) {
                                 fieldValue = EncodingUtil.base64Decode(fieldValueStr);
-                            } else if (DisplayType.BOOLEAN == fieldDisplayType) {
+                                continue;
+                            }
+
+                            if (DisplayType.BOOLEAN == fieldDisplayType) {
                                 fieldValue = Boolean.valueOf(fieldValue);
+                                continue;
                             }
                         }
+
                         if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
                             sObj.put(property, (Long) fieldValue);
-                        } else {
-                            sObj.put(property, fieldValue);
+                            continue;
                         }
+
+                        sObj.put(property, fieldValue);
                     } catch (SObjectException ex) {
                     } catch (Exception ex) {
                         throw ex;
                     }
-                } else {
-                    Boolean isCustomSObjectField = property.endsWithIgnoreCase('__c');
-                    if (isCustomSObjectField && skipValidation != true) {
-                        throw new jam.MissingDataException(String.format(
-                                'No Field with name {0} on {1}',
-                                new List<String>{
-                                        property,
-                                        '' + sObj
-                                }
-                        ));
-                    }
                 }
-            }
-            return sObj;
-        }
 
-        //TODO: review and merge with populateSObjectFields
-        public SObject populateSObjectFieldsVF(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
-            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
-            for (String property : sObjMap.keySet()) {
-
-                SObjectField field = fieldsMap.get(property.toLowerCase());
-
-                if (field != null) {
-                    try {
-                        Object fieldValue = sObjMap.get(property);
-                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
-                            DisplayType fieldDisplayType = field.getDescribe().type;
-                            String fieldValueStr = (String) fieldValue;
-
-                            if (fieldDisplayType == DisplayType.DATE) {
-                                fieldValue = jam.dates.parseDateAusFormat((String) fieldValue);
-                            } else if (fieldDisplayType == DisplayType.DATETIME) {
-                                fieldValue = jam.dates.parseDatetimeAusFormat((String) fieldValue);
-                            } else if (fieldDisplayType == DisplayType.TIME) {
-                                Datetime dt = jam.dates.parseDatetimeAnyFormat((String) fieldValue, 'hh:mm a');
-                                fieldValue = dt == null ? fieldValue : dt.time();
-                            } else if (fieldDisplayType == DisplayType.BOOLEAN) {
-                                fieldValue = 'Yes'.equalsIgnoreCase((String) fieldValue) ? true : false;
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.DOUBLE, DisplayType.CURRENCY
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Decimal.valueOf(fieldValueStr);
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.INTEGER
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Integer.valueOf(fieldValueStr);
+                if (property.endsWithIgnoreCase('__c') && skipValidation != true) {
+                    throw new jam.MissingDataException(String.format(
+                            'No Field with name {0} on {1}',
+                            new List<String>{
+                                    property,
+                                    '' + sObj
                             }
-                        }
-                        if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
-                            sObj.put(property, (Long) fieldValue);
-                        } else {
-                            sObj.put(property, fieldValue);
-                        }
-                    } catch (SObjectException ex) {
-                    } catch (Exception ex) {
-                        throw ex;
-                    }
-                } else {
-                    Boolean isCustomSObjectField = property.endsWithIgnoreCase('__c');
-                    if (isCustomSObjectField && skipValidation != true) {
-                        throw new jam.MissingDataException(String.format(
-                                'No Field with name {0} on {1}',
-                                new List<String>{
-                                        property,
-                                        '' + sObj
-                                }
-                        ));
-                    }
+                    ));
                 }
             }
+
             return sObj;
         }
     }
