@@ -1421,54 +1421,21 @@ global inherited sharing class jam {
                     // Skip related Lists
                 } else if (fieldValue instanceof SObject) {
                     sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields, isVisualforce));
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
-                    sObjMap.put(fieldName, fieldValue);
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
-                    sObjMap.put(fieldName, fieldValue);
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.TIME) {
-                    sObjMap.put(fieldName, fieldValue);
-                } else {
-                    sObjMap.put(fieldName, fieldValue == null ? defaultFieldValue : fieldValue);
-                }
-            }
-
-            if (isAllFields == true) {
-                for (SObjectField field : fieldsMap.values()) {
-                    String fieldName = field.getDescribe().getName();
-                    if (!populatedFieldsMap.containsKey(fieldName)) {
-                        sObjMap.put(fieldName, defaultFieldValue);
+                } else if (isVisualforce && fieldValue != null && fieldVar != null) {
+                    if (fieldVar.getDescribe().type == DisplayType.DATE) {
+                        sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
                     }
-                }
-            }
 
-            return sObjMap;
-        }
+                    if (fieldVar.getDescribe().type == DisplayType.DATETIME) {
+                        sObjMap.put(fieldName, ((Datetime) fieldValue).format());
+                    }
 
-        //TODO join with castSObjectToMap
-        public Map<String, Object> castSObjectToMapVF(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
-            Map<String, Object> sObjMap = new Map<String, Object>();
-
-            Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
-            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
-
-            for (String fieldName : populatedFieldsMap.keySet()) {
-                Object fieldValue = populatedFieldsMap.get(fieldName);
-                SObjectField fieldVar = fieldsMap.get(fieldName);
-
-                if (fieldValue instanceof List<SObject>) {
-                    // Skip related Lists
-                } else if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.castSObjectToMapVF((SObject) fieldValue, defaultFieldValue, isAllFields));
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
-                    sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
-                    sObjMap.put(fieldName, ((Datetime) fieldValue).format());
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.TIME) {
-                    sObjMap.put(fieldName, Datetime.newInstance(Date.today(), (Time) fieldValue).format('hh:mm a'));
+                    if (fieldVar.getDescribe().type == DisplayType.TIME) {
+                        sObjMap.put(fieldName, Datetime.newInstance(Date.today(), (Time) fieldValue).format('hh:mm a'));
+                    }
                 } else {
                     sObjMap.put(fieldName, fieldValue == null ? defaultFieldValue : fieldValue);
                 }
-
             }
 
             if (isAllFields == true) {
@@ -1507,7 +1474,6 @@ global inherited sharing class jam {
                                 }
                                 fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
                             } else if (fieldDisplayType == DisplayType.TIME) {
-                                //TODO: check AM PM
                                 if (fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM')) {
                                     fieldValue = jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase());
                                 } else {
