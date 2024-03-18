@@ -68,6 +68,91 @@ global inherited sharing class jam {
             return this.request == null ? null : this.request.get(path);
         }
 
+        public String getString(String path) {
+            return this.request == null ? null : this.request.getString(path);
+        }
+
+        public String getRequiredString(String path) {
+            return this.request == null ? null : this.request.getRequiredString(path);
+        }
+
+        public String getRequiredString(String path, String errorMessage) {
+            return this.request == null ? null : this.request.getRequiredString(path, errorMessage);
+        }
+
+        public Integer getInteger(String path) {
+            return this.request == null ? null : this.request.getInteger(path);
+        }
+
+        public Long getLong(String path) {
+            return this.request == null ? null : this.request.getLong(path);
+        }
+
+        public Decimal getDecimal(String path) {
+            return this.request == null ? null : this.request.getDecimal(path);
+        }
+
+        public Boolean getBoolean(String path) {
+            return this.request == null ? false : this.request.getBoolean(path);
+        }
+
+        public Date getDate(String path) {
+            return this.request == null ? null : this.request.getDate(path);
+        }
+
+        public Time getTime(String path) {
+            return this.request == null ? null : this.request.getTime(path);
+        }
+
+        public Datetime getDatetime(String path) {
+            return this.request == null ? null : this.request.getDatetime(path);
+        }
+
+        public SObject getSObject(String path, SObjectType sObjectTypeVar) {
+            return this.request == null ? null : this.request.getSObject(path, sObjectTypeVar);
+        }
+
+        public jam.Action getSObject(String path, SObject sObj) {
+            if(this.request != null) {
+                this.request.getSObject(path, sObj);
+            }
+
+            return this;
+        }
+
+        public jam.Action getSObject(String path, SObject sObj, Boolean skipValidation) {
+            if(this.request != null) {
+                this.request.getSObject(path, sObj, skipValidation);
+            }
+
+            return this;
+        }
+
+        public List<Object> getObjects(String path) {
+            return this.request == null ? null : this.request.getObjects(path);
+        }
+
+        public List<String> getStrings(String path) {
+            return this.request == null ? null : this.request.getStrings(path);
+        }
+
+        public List<Map<String, Object>> getMaps(String path) {
+            return this.request == null ? null : this.request.getMaps(path);
+        }
+
+        public List<DTO> getDTOs(String path) {
+            return this.request == null ? null : this.request.getDTOs(path);
+        }
+
+        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
+            return this.request == null ? null : this.request.getSObjects(path, sObjectTypeVar);
+        }
+
+        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
+            return this.request == null ? null : this.request.getSObjects(path, sObjectTypeVar, skipValidation);
+        }
+
+
         //SETTER ALIASES
         public jam.Action put(String path, Object value) {
             this.response.put(path, value);
@@ -79,7 +164,20 @@ global inherited sharing class jam {
             return this;
         }
 
-        //TODO add notations
+        public jam.Action putSObject(String path, SObject sObj) {
+            this.response.put(path, sObj);
+            return this;
+        }
+
+        public jam.Action putSObjects(String path, List<SObject> sObjects) {
+            this.response.put(path, sObjects);
+            return this;
+        }
+
+        public jam.Action putSObjects(String path, List<SObject> sObjects, Integer recordsLimit) {
+            this.response.putSObjects(path, sObjects, recordsLimit);
+            return this;
+        }
     }
 
     global virtual class DTO {
@@ -89,6 +187,7 @@ global inherited sharing class jam {
         public Object defaultFieldValue = '';
 
         //CONSTRUCTORS
+        //TODO: DTO constructor(arrayPath, JSONarray);
         public DTO() {
         }
 
@@ -152,7 +251,7 @@ global inherited sharing class jam {
         public Boolean getBoolean(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             if (val == null) {
-                return null;
+                return false;
             }
             if (val instanceof Boolean) {
                 return (Boolean) val;
@@ -178,8 +277,10 @@ global inherited sharing class jam {
             return datetimeStr == null ? null : jam.dates.datetimeStringToDatetime(datetimeStr);
         }
 
-        public DTO getSObject(String path, SObjectType sObjectTypeVar) {
-            return getSObject(path, sObjectTypeVar.newSObject(), false);
+        public SObject getSObject(String path, SObjectType sObjectTypeVar) {
+            SObject sObj = sObjectTypeVar.newSObject();
+            getSObject(path, sObj, false);
+            return sObj;
         }
 
         public DTO getSObject(String path, SObject sObj) {
