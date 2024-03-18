@@ -26,8 +26,7 @@ global inherited sharing class jam {
     @AuraEnabled
     global static String runAction(String action, String requestJSON) {
         try {
-            jam.DTO responseVar = jam.run(action, requestJSON);
-            return JSON.serialize(responseVar);
+            return jam.run(action, requestJSON).getJSON();
         } catch (Exception ex) {
             return new jam.Response(ex).getJSON();
         }
@@ -65,11 +64,12 @@ global inherited sharing class jam {
 
         global abstract void run();
 
-        //ALIASES
+        //GETTER ALIASES
         public Object get(String path) {
             return this.request == null ? null : this.request.get(path);
         }
 
+        //SETTER ALIASES
         public jam.Action put(String path, Object value) {
             this.response.put(path, value);
             return this;
@@ -81,28 +81,15 @@ global inherited sharing class jam {
         }
 
         //TODO add notations
-
-//        public virtual void initSelectOptions() {
-//            if (this.request.fields != null && !this.request.fields.isEmpty()) {
-//                this.response.selectOptions = jam.picklists.getPicklistOptionsMap(this.request.fields);
-//            }
-//
-//            if (this.request.dependentFieldsBySObjectType != null && !this.request.dependentFieldsBySObjectType.isEmpty()) {
-//                this.response.dependentOptions = jam.picklists.getDependentPicklistOptionsMap(this.request.dependentFieldsBySObjectType);
-//            }
-//
-//            if (this.request.sObjectTypes != null && !this.request.sObjectTypes.isEmpty()) {
-//                this.response.sObjects = jam.sObjects.getSObjectDescribe(this.request.sObjectTypes);
-//            }
-//        }
     }
 
     global virtual class DTO {
         public Map<String, Object> dto = new Map<String, Object>();
-        public Boolean isVisualforce = false;
+        public Boolean isVisualforce = false;//TODO move setIsVisualforce to setter
         public Boolean isAllFields = false;
         public Object defaultFieldValue = '';
 
+        //CONSTRUCTORS
         public DTO() {
         }
 
@@ -114,12 +101,28 @@ global inherited sharing class jam {
             this.dto = requestMap == null ? this.dto : requestMap;
         }
 
+        public DTO setIsVisualforce(Boolean value) {
+            this.isVisualforce = value == true;
+            return this;
+        }
+
+        public DTO setIsAllFields(Boolean value) {
+            this.isAllFields = value == true;
+            return this;
+        }
+
+        public DTO setDefaultFieldValue(Object value) {
+            this.defaultFieldValue = value;
+            return this;
+        }
+
+        //GETTERS
         public Object get(String path) {
-            return jam.arrays.getMapValue(this.dto, path);
+            return jam.objects.getMapValue(this.dto, path);
         }
 
         public String getString(String path) {
-            Object val = jam.arrays.getMapValue(this.dto, path);
+            Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : String.valueOf(val);
         }
 
@@ -134,21 +137,21 @@ global inherited sharing class jam {
         }
 
         public Integer getInteger(String path) {
-            Object val = jam.arrays.getMapValue(this.dto, path);
+            Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : Integer.valueOf(val);
         }
 
         public Long getLong(String path) {
-            Object val = jam.arrays.getMapValue(this.dto, path);
+            Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : (val instanceof String ? Long.valueOf((String) val) : (Long) val);
         }
 
         public Decimal getDecimal(String path) {
-            return jam.objects.parseDecimal(jam.arrays.getMapValue(this.dto, path));
+            return jam.objects.parseDecimal(jam.objects.getMapValue(this.dto, path));
         }
 
         public Boolean getBoolean(String path) {
-            Object val = jam.arrays.getMapValue(this.dto, path);
+            Object val = jam.objects.getMapValue(this.dto, path);
             if (val == null) {
                 return null;
             }
@@ -176,14 +179,47 @@ global inherited sharing class jam {
             return datetimeStr == null ? null : jam.dates.datetimeStringToDatetime(datetimeStr);
         }
 
-        public List<Object> getList(String path) {
-            return (List<Object>) jam.arrays.getMapValue(this.dto, path);
+        public DTO getSObject(SObject sObj) {
+            return getSObject(sObj, false);
+        }
+        //TODO: use SObjectType instead of instance. Contact contactVar = this.getSObject('contact', Contact.SObjectType);
+
+        public DTO getSObject(String path, SObject sObj) {
+            return getSObject(path, sObj, false);
+        }
+
+        public DTO getSObject(SObject sObj, Boolean skipValidation) {
+            return getSObject('', sObj, skipValidation);
+        }
+
+        public DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
+            if (path == null || sObj == null) {
+                return null;
+            }
+
+            Object value;
+            if (String.isNotBlank(path)) {
+                value = jam.objects.getMapValue(this.dto, path);
+            } else {
+                value = this.dto;
+            }
+
+            if (value != null) {
+                Map<String, Object> dataMap = (Map<String, Object>) value;
+                jam.sObjects.populateSObject(sObj, dataMap, skipValidation, this.isVisualforce);
+            }
+
+            return this;
+        }
+
+        public List<Object> getObjects(String path) {
+            return (List<Object>) jam.objects.getMapValue(this.dto, path);
         }
 
         public List<String> getStrings(String path) {
             List<String> strings = new List<String>();
 
-            List<Object> objects = (List<Object>) jam.arrays.getMapValue(this.dto, path);
+            List<Object> objects = (List<Object>) jam.objects.getMapValue(this.dto, path);
 
             if (objects == null) {
                 return null;
@@ -199,7 +235,7 @@ global inherited sharing class jam {
         public List<Map<String, Object>> getMaps(String path) {
             List<Map<String, Object>> returnList = new List<Map<String, Object>>();
 
-            List<Object> objects = getList(path);
+            List<Object> objects = getObjects(path);
             if (objects == null) {
                 return null;
             }
@@ -227,64 +263,6 @@ global inherited sharing class jam {
             return returnList;
         }
 
-        public Boolean has(String path) {
-            return jam.arrays.mapContains(this.dto, path);
-        }
-
-        public DTO put(Map<String, Object> mapVar) {
-            for(String key : mapVar.keySet()) {
-                jam.arrays.setMapValue(this.dto, key, mapVar.get(key));
-            }
-            return this;
-        }
-
-        public DTO put(String path, Object value) {
-            jam.arrays.setMapValue(this.dto, path, value);
-            return this;
-        }
-
-        public DTO getSObject(SObject sObj) {
-            return getSObject(sObj, false);
-        }
-
-
-        //TODO: use SObjectType instead of instance. Contact contactVar = this.getSObject('contact', Contact.SObjectType);
-
-        public DTO getSObject(String path, SObject sObj) {
-            return getSObject(path, sObj, false);
-        }
-
-        public DTO getSObject(SObject sObj, Boolean skipValidation) {
-            return getSObject('', sObj, skipValidation);
-        }
-
-        public DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
-            if (path == null || sObj == null) {
-                return null;
-            }
-
-            Object value;
-            if (String.isNotBlank(path)) {
-                value = jam.arrays.getMapValue(this.dto, path);
-            } else {
-                value = this.dto;
-            }
-
-            if (value != null) {
-                Map<String, Object> dataMap = (Map<String, Object>) value;
-
-                if (this.isVisualforce == true) {
-                    this.populateSObjectFieldsVF(sObj, dataMap, skipValidation);
-                } else {
-                    this.populateSObject(sObj, dataMap, skipValidation);
-                }
-
-            }
-
-            return this;
-        }
-
-
         public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
             return getSObjects(path, sObjectTypeVar, false);
         }
@@ -292,7 +270,7 @@ global inherited sharing class jam {
         //TODO: DTO constructor(arrayPath, JSONarray);
         public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
 
-            List<Object> values = (List<Object>) jam.arrays.getMapValue(this.dto, path);
+            List<Object> values = (List<Object>) jam.objects.getMapValue(this.dto, path);
 
             if (values == null) {
                 return null;
@@ -306,9 +284,9 @@ global inherited sharing class jam {
                 Map<String, Object> dataMap = (Map<String, Object>) value;
 
                 if (this.isVisualforce == true) {
-                    this.populateSObjectFieldsVF(sObj, dataMap, skipValidation);
+                    jam.sObjects.populateSObjectFieldsVF(sObj, dataMap, skipValidation);
                 } else {
-                    this.populateSObject(sObj, dataMap, skipValidation);
+                    jam.sObjects.populateSObject(sObj, dataMap, skipValidation);
                 }
 
                 sObjects.add(sObj);
@@ -317,22 +295,28 @@ global inherited sharing class jam {
             return sObjects;
         }
 
+        //SETTERS
+        public DTO put(Map<String, Object> mapVar) {
+            for (String key : mapVar.keySet()) {
+                jam.objects.setMapValue(this.dto, key, mapVar.get(key));
+            }
+            return this;
+        }
+
+        public DTO put(String path, Object value) {
+            jam.objects.setMapValue(this.dto, path, value);
+            return this;
+        }
+
         //TODO: this.isVisualforce
         public DTO putSObject(String path, SObject sObj) {
             if (sObj == null) {
                 return null;
             }
 
-            Map<String, Object> dataMap;
+            Map<String, Object> dataMap = jam.sObjects.castSObjectToMap(sObj, this.isVisualforce, this.defaultFieldValue, this.isAllFields);
 
-            if (this.isVisualforce == true) {
-                dataMap = this.castSObjectToMapVF(sObj);
-            } else {
-                dataMap = this.castSObjectToMap(sObj);
-
-            }
-
-            jam.arrays.setMapValue(
+            jam.objects.setMapValue(
                     this.dto,
                     path,
                     dataMap
@@ -357,6 +341,8 @@ global inherited sharing class jam {
                 while (sObjects.size() > recordsLimit) {
                     sObjects.remove(sObjects.size() - 1);
                 }
+
+                //TODO: move to generic method and apply to put[Arrays]
                 recordsPath = path + '.records';
                 String hasMorePath = path + '.hasMore';
                 String limitPath = path + '.limit';
@@ -367,249 +353,12 @@ global inherited sharing class jam {
                 this.put(countPath, sObjects.size());
             }
 
-            jam.arrays.setMapValue(
+            jam.objects.setMapValue(
                     this.dto,
                     recordsPath,
-                    this.castSObjectsToMaps(sObjects)
+                    jam.sObjects.castSObjectsToMaps(sObjects)
             );
 
-            return this;
-        }
-
-        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects) {
-            List<Map<String, Object>> sObjMaps = new List<Map<String, Object>>();
-
-            for (SObject sObj : sObjects) {
-                Map<String, Object> sObjMap = new Map<String, Object>();
-
-                if (this.isVisualforce == true) {
-                    sObjMap = this.castSObjectToMapVF(sObj);
-                } else {
-                    sObjMap = this.castSObjectToMap(sObj);
-                }
-
-                sObjMaps.add(sObjMap);
-            }
-
-            return sObjMaps;
-        }
-
-        public Map<String, Object> castSObjectToMap(SObject sObj) {
-            Map<String, Object> sObjMap = new Map<String, Object>();
-
-            Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
-            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
-
-            for (String fieldName : populatedFieldsMap.keySet()) {
-                Object fieldValue = populatedFieldsMap.get(fieldName);
-                SObjectField fieldVar = fieldsMap.get(fieldName);
-
-                //TODO: review ICN
-                if (fieldValue instanceof List<SObject>) {
-                    // Skip related Lists
-                } else if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue));
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
-                    sObjMap.put(fieldName, fieldValue);
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
-                    sObjMap.put(fieldName, fieldValue);
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.TIME) {
-                    sObjMap.put(fieldName, fieldValue);
-                } else {
-                    sObjMap.put(fieldName, fieldValue == null ? this.defaultFieldValue : fieldValue);
-                }
-            }
-
-            if (this.isAllFields == true) {
-                for (SObjectField field : fieldsMap.values()) {
-                    String fieldName = field.getDescribe().getName();
-                    if (!populatedFieldsMap.containsKey(fieldName)) {
-                        sObjMap.put(fieldName, this.defaultFieldValue);
-                    }
-                }
-            }
-
-            return sObjMap;
-        }
-
-        //TODO join with castSObjectToMap
-        public Map<String, Object> castSObjectToMapVF(SObject sObj) {
-            Map<String, Object> sObjMap = new Map<String, Object>();
-
-            Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
-            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
-
-            for (String fieldName : populatedFieldsMap.keySet()) {
-                Object fieldValue = populatedFieldsMap.get(fieldName);
-                SObjectField fieldVar = fieldsMap.get(fieldName);
-
-                if (fieldValue instanceof List<SObject>) {
-                    // Skip related Lists
-                } else if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.castSObjectToMapVF((SObject) fieldValue));
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
-                    sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
-                    sObjMap.put(fieldName, ((Datetime) fieldValue).format());
-                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.TIME) {
-                    sObjMap.put(fieldName, Datetime.newInstance(Date.today(), (Time) fieldValue).format('hh:mm a'));
-                } else {
-                    sObjMap.put(fieldName, fieldValue == null ? this.defaultFieldValue : fieldValue);
-                }
-
-            }
-
-            if (this.isAllFields == true) {
-                for (SObjectField field : fieldsMap.values()) {
-                    String fieldName = field.getDescribe().getName();
-                    if (!populatedFieldsMap.containsKey(fieldName)) {
-                        sObjMap.put(fieldName, this.defaultFieldValue);
-                    }
-                }
-            }
-
-            return sObjMap;
-        }
-
-        private SObject populateSObject(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
-            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
-            for (String property : sObjMap.keySet()) {
-
-                SObjectField field = fieldsMap.get(property.toLowerCase());
-
-                if (field != null) {
-                    try {
-                        Object fieldValue = sObjMap.get(property);
-                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
-                            DisplayType fieldDisplayType = field.getDescribe().type;
-                            String fieldValueStr = (String) fieldValue;
-
-                            if (fieldDisplayType == DisplayType.DATE) {
-                                fieldValue = Date.valueOf(fieldValueStr);
-                            } else if (fieldDisplayType == DisplayType.DATETIME) {
-                                if (!fieldValueStr.startsWith('"')) {
-                                    fieldValueStr = '"' + fieldValueStr;
-                                }
-                                if (!fieldValueStr.endsWith('"')) {
-                                    fieldValueStr = fieldValueStr + '"';
-                                }
-                                fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
-                            } else if (fieldDisplayType == DisplayType.TIME) {
-                                //TODO: check AM PM
-                                if(fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM')) {
-                                    fieldValue = jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase());
-                                } else {
-                                    fieldValue = jam.dates.timeStringToTime(fieldValueStr);
-                                }
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.DOUBLE, DisplayType.CURRENCY
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Decimal.valueOf(fieldValueStr);
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.INTEGER
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Integer.valueOf(fieldValueStr);
-                            } else if (DisplayType.BASE64 == fieldDisplayType) {
-                                fieldValue = EncodingUtil.base64Decode(fieldValueStr);
-                            } else if (DisplayType.BOOLEAN == fieldDisplayType) {
-                                fieldValue = Boolean.valueOf(fieldValue);
-                            }
-                        }
-                        if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
-                            sObj.put(property, (Long) fieldValue);
-                        } else {
-                            sObj.put(property, fieldValue);
-                        }
-                    } catch (SObjectException ex) {
-                    } catch (Exception ex) {
-                        throw ex;
-                    }
-                } else {
-                    Boolean isCustomSObjectField = property.endsWithIgnoreCase('__c');
-                    if (isCustomSObjectField && skipValidation != true) {
-                        throw new jam.MissingDataException(String.format(
-                                'No Field with name {0} on {1}',
-                                new List<String>{
-                                        property,
-                                        '' + sObj
-                                }
-                        ));
-                    }
-                }
-            }
-            return sObj;
-        }
-
-        //TODO: review and merge with populateSObjectFields
-        private SObject populateSObjectFieldsVF(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
-            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
-            for (String property : sObjMap.keySet()) {
-
-                SObjectField field = fieldsMap.get(property.toLowerCase());
-
-                if (field != null) {
-                    try {
-                        Object fieldValue = sObjMap.get(property);
-                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
-                            DisplayType fieldDisplayType = field.getDescribe().type;
-                            String fieldValueStr = (String) fieldValue;
-
-                            if (fieldDisplayType == DisplayType.DATE) {
-                                fieldValue = jam.dates.parseDateAusFormat((String) fieldValue);
-                            } else if (fieldDisplayType == DisplayType.DATETIME) {
-                                fieldValue = jam.dates.parseDatetimeAusFormat((String) fieldValue);
-                            } else if (fieldDisplayType == DisplayType.TIME) {
-                                Datetime dt = jam.dates.parseDatetimeAnyFormat((String) fieldValue, 'hh:mm a');
-                                fieldValue = dt == null ? fieldValue : dt.time();
-                            } else if (fieldDisplayType == DisplayType.BOOLEAN) {
-                                fieldValue = 'Yes'.equalsIgnoreCase((String) fieldValue) ? true : false;
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.DOUBLE, DisplayType.CURRENCY
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Decimal.valueOf(fieldValueStr);
-                            } else if (new Set<DisplayType>{
-                                    DisplayType.INTEGER
-                            }.contains(fieldDisplayType)) {
-                                fieldValue = String.isBlank(fieldValueStr) ? null : Integer.valueOf(fieldValueStr);
-                            }
-                        }
-                        if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
-                            sObj.put(property, (Long) fieldValue);
-                        } else {
-                            sObj.put(property, fieldValue);
-                        }
-                    } catch (SObjectException ex) {
-                    } catch (Exception ex) {
-                        throw ex;
-                    }
-                } else {
-                    Boolean isCustomSObjectField = property.endsWithIgnoreCase('__c');
-                    if (isCustomSObjectField && skipValidation != true) {
-                        throw new jam.MissingDataException(String.format(
-                                'No Field with name {0} on {1}',
-                                new List<String>{
-                                        property,
-                                        '' + sObj
-                                }
-                        ));
-                    }
-                }
-            }
-            return sObj;
-        }
-
-        public DTO setIsVisualforce(Boolean value) {
-            this.isVisualforce = value == true;
-            return this;
-        }
-
-        public DTO setIsAllFields(Boolean value) {
-            this.isAllFields = value == true;
-            return this;
-        }
-
-        public DTO setDefaultFieldValue(Object value) {
-            this.defaultFieldValue = value;
             return this;
         }
     }
@@ -637,15 +386,6 @@ global inherited sharing class jam {
             }
         }
 
-        global Response(List<Exception> exs) {
-            this(exs == null || exs.isEmpty() ? null : exs.get(0));
-
-            this.errors = new List<jam.ErrorDetails>();
-            for (Exception ex : exs) {
-                this.errors.add(new jam.ExceptionDetails(ex));
-            }
-        }
-
         global Response(List<String> messages) {
             this(String.join(messages, ', '));
 
@@ -669,9 +409,13 @@ global inherited sharing class jam {
         }
 
         global String getJSON() {
-            return JSON.serialize(this);
+            return JSON.serialize(new Map<String, Object>{
+                    'dto' => this.dto,
+                    'isValid' => this.isValid,
+                    'error' => this.error,
+                    'errors' => this.errors
+            });
         }
-
     }
 
     //STRUCTURES
@@ -747,124 +491,6 @@ global inherited sharing class jam {
             String value = jam.objects.defaultIfNull(dtoVar.getString(path), '');
             return value;
         }
-    }
-
-    public inherited sharing class MissingDataException extends Exception {
-    }
-    public inherited sharing class ValidationException extends Exception {
-    }
-    public inherited sharing class ProcessException extends Exception {
-    }
-
-    //UTILS
-    public static PicklistExtensions picklists {
-        get {
-            if (picklists == null) {
-                picklists = new PicklistExtensions();
-            }
-            return picklists;
-        }
-        private set;
-    }
-
-    public static DateExtensions dates {
-        get {
-            if (dates == null) {
-                dates = new DateExtensions();
-            }
-            return dates;
-        }
-        private set;
-    }
-
-    public static StringExtensions strings {
-        get {
-            if (strings == null) {
-                strings = new StringExtensions();
-            }
-            return strings;
-        }
-        private set;
-    }
-
-    public static UserExtensions users {
-        get {
-            if (users == null) {
-                users = new UserExtensions();
-            }
-            return users;
-        }
-        private set;
-    }
-
-    public static SObjectExtensions sObjects {
-        get {
-            if (sObjects == null) {
-                sObjects = new SObjectExtensions();
-            }
-            return sObjects;
-        }
-        private set;
-    }
-
-    public static URLExtensions URLs {
-        get {
-            if (URLs == null) {
-                URLs = new URLExtensions();
-            }
-            return URLs;
-        }
-        private set;
-    }
-
-    public static EncodingExtensions encodings {
-        get {
-            if (encodings == null) {
-                encodings = new EncodingExtensions();
-            }
-            return encodings;
-        }
-        private set;
-    }
-
-    public static ArrayExtensions arrays {
-        get {
-            if (arrays == null) {
-                arrays = new ArrayExtensions();
-            }
-            return arrays;
-        }
-        private set;
-    }
-
-    public static OrgExtensions orgs {
-        get {
-            if (orgs == null) {
-                orgs = new OrgExtensions();
-            }
-            return orgs;
-        }
-        private set;
-    }
-
-    public static ObjectExtensions objects {
-        get {
-            if (objects == null) {
-                objects = new ObjectExtensions();
-            }
-            return objects;
-        }
-        private set;
-    }
-
-    public static TemplateExtensions templates {
-        get {
-            if (templates == null) {
-                templates = new TemplateExtensions();
-            }
-            return templates;
-        }
-        private set;
     }
 
     public inherited sharing class PicklistExtensions {
@@ -1612,6 +1238,18 @@ global inherited sharing class jam {
         }
 
         public Boolean isSomeFieldChanged(SObject record, SObject existingRecord, List<String> fields) {
+            if (fields == null) {
+                throw new jam.MissingDataException('fields argument is missing');
+            }
+
+            if (existingRecord == null) {
+                throw new jam.MissingDataException('fields argument is missing');
+            }
+
+            if (record == null) {
+                throw new jam.MissingDataException('fields argument is missing');
+            }
+
             for (String field : fields) {
                 Object newFieldValue = record.get(field);
                 Object oldFieldValue = existingRecord.get(field);
@@ -1625,6 +1263,10 @@ global inherited sharing class jam {
         }
 
         public Boolean isSomeFieldChanged(SObject record, SObject existingRecord, List<SObjectField> fields) {
+            if (fields == null) {
+                throw new jam.MissingDataException('fields argument is missing');
+            }
+
             List<String> fieldsStrings = new List<String>();
             for (SObjectField field : fields) {
                 fieldsStrings.add(field.getDescribe().getName());
@@ -1645,7 +1287,7 @@ global inherited sharing class jam {
             return targetSobjectVar == null ? null : targetSobjectVar.get(pathItems.get(0));
         }
 
-//        public void restoreNotBlankValues(List<SObject> records, Set<SObjectField> fields){
+        public void restoreNotBlankValues(List<SObject> records, Set<SObjectField> fields) {
 //            if(records != null && records.isEmpty() == false && fields != null && fields.isEmpty() == false){
 //                SObjectType sObjectTypeVar = records.get(0).getSObjectType();
 //                fflib_QueryFactory queryFactory = new fflib_QueryFactory(sObjectTypeVar);
@@ -1664,14 +1306,17 @@ global inherited sharing class jam {
 //                    }
 //                }
 //            }
-//        }
+        }
 
         public Boolean deduplicate(SObject recordVar) {
             return deduplicate(recordVar, null);
         }
 
         public Boolean deduplicate(SObject recordVar, Set<SObjectField> preserveFields) {
+            return deduplicate(recordVar, preserveFields, null);
+        }
 
+        public Boolean deduplicate(SObject recordVar, Set<SObjectField> preserveFields, String duplicateRuleName) {
             if (recordVar == null || recordVar.Id != null) {
                 return false;
             }
@@ -1682,22 +1327,28 @@ global inherited sharing class jam {
                 });
                 for (Datacloud.FindDuplicatesResult dupeResult : results) {
                     for (Datacloud.DuplicateResult dupeRes : dupeResult.getDuplicateResults()) {
+                        if (String.isNotBlank(duplicateRuleName) && !duplicateRuleName.equals(dupeRes.getDuplicateRule())) {
+                            continue;
+                        }
+
                         for (Datacloud.MatchResult matchRes : dupeRes.getMatchResults()) {
                             for (Datacloud.MatchRecord matchRec : matchRes.getMatchRecords()) {
-                                recordVar.Id = (String) matchRec.getRecord().get('id');
-//                                jam.sObjects.restoreNotBlankValues(new List<SObject>{recordVar}, preserveFields);
+                                recordVar.Id = (string) matchRec.getRecord().get('id');
+                                jam.sObjects.restoreNotBlankValues(new List<SObject>{
+                                        recordVar
+                                }, preserveFields);
                                 return true;
                             }
                         }
                     }
                 }
             } catch (System.HandledException ex) { //No active duplicate rules are defined for the object type.
+                System.debug(ex.getMessage());
             } catch (Exception ex) {
+                System.debug(ex.getMessage()); // Other issue.
             }
             return false;
         }
-
-        //TODO: add deduplicate by specific rule
 
         public Map<String, Object> getSObjectDescribe(List<SObjectType> sObjectTypes) {
             DTO dto = new DTO();
@@ -1727,6 +1378,244 @@ global inherited sharing class jam {
             }
 
             return dto.dto;
+        }
+
+        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects) {
+            return castSObjectsToMaps(sObjects, false, null, false);
+        }
+
+        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Boolean isVisualforce, Object defaultFieldValue, Boolean isAllFields) {
+            List<Map<String, Object>> sObjMaps = new List<Map<String, Object>>();
+
+            for (SObject sObj : sObjects) {
+                Map<String, Object> sObjMap = new Map<String, Object>();
+
+                if (isVisualforce == true) {
+                    sObjMap = this.castSObjectToMapVF(sObj, defaultFieldValue, isAllFields);
+                } else {
+                    sObjMap = this.castSObjectToMap(sObj, defaultFieldValue, isAllFields);
+                }
+
+                sObjMaps.add(sObjMap);
+            }
+
+            return sObjMaps;
+        }
+
+        public Map<String, Object> castSObjectToMap(SObject sObj) {
+            return castSObjectToMap(sObj, null, false);
+        }
+
+        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue) {
+            return castSObjectToMap(sObj, defaultFieldValue, false);
+        }
+
+        public Map<String, Object> castSObjectToMap(SObject sObj, Boolean isAllFields) {
+            return castSObjectToMap(sObj, null, isAllFields);
+        }
+
+        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
+            Map<String, Object> sObjMap = new Map<String, Object>();
+
+            Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
+            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
+
+            for (String fieldName : populatedFieldsMap.keySet()) {
+                Object fieldValue = populatedFieldsMap.get(fieldName);
+                SObjectField fieldVar = fieldsMap.get(fieldName);
+
+                //TODO: review ICN
+                if (fieldValue instanceof List<SObject>) {
+                    // Skip related Lists
+                } else if (fieldValue instanceof SObject) {
+                    sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields));
+                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
+                    sObjMap.put(fieldName, fieldValue);
+                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
+                    sObjMap.put(fieldName, fieldValue);
+                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.TIME) {
+                    sObjMap.put(fieldName, fieldValue);
+                } else {
+                    sObjMap.put(fieldName, fieldValue == null ? defaultFieldValue : fieldValue);
+                }
+            }
+
+            if (isAllFields == true) {
+                for (SObjectField field : fieldsMap.values()) {
+                    String fieldName = field.getDescribe().getName();
+                    if (!populatedFieldsMap.containsKey(fieldName)) {
+                        sObjMap.put(fieldName, defaultFieldValue);
+                    }
+                }
+            }
+
+            return sObjMap;
+        }
+
+        //TODO join with castSObjectToMap
+        public Map<String, Object> castSObjectToMapVF(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
+            Map<String, Object> sObjMap = new Map<String, Object>();
+
+            Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
+            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
+
+            for (String fieldName : populatedFieldsMap.keySet()) {
+                Object fieldValue = populatedFieldsMap.get(fieldName);
+                SObjectField fieldVar = fieldsMap.get(fieldName);
+
+                if (fieldValue instanceof List<SObject>) {
+                    // Skip related Lists
+                } else if (fieldValue instanceof SObject) {
+                    sObjMap.put(fieldName, this.castSObjectToMapVF((SObject) fieldValue, defaultFieldValue, isAllFields));
+                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATE) {
+                    sObjMap.put(fieldName, jam.dates.dateToDateTime(((Date) fieldValue)).format('dd/MM/yyyy'));
+                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.DATETIME) {
+                    sObjMap.put(fieldName, ((Datetime) fieldValue).format());
+                } else if (fieldValue != null && fieldVar != null && fieldVar.getDescribe().type == DisplayType.TIME) {
+                    sObjMap.put(fieldName, Datetime.newInstance(Date.today(), (Time) fieldValue).format('hh:mm a'));
+                } else {
+                    sObjMap.put(fieldName, fieldValue == null ? defaultFieldValue : fieldValue);
+                }
+
+            }
+
+            if (isAllFields == true) {
+                for (SObjectField field : fieldsMap.values()) {
+                    String fieldName = field.getDescribe().getName();
+                    if (!populatedFieldsMap.containsKey(fieldName)) {
+                        sObjMap.put(fieldName, defaultFieldValue);
+                    }
+                }
+            }
+
+            return sObjMap;
+        }
+
+        public SObject populateSObject(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation, Boolean isVisualforce) {
+            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
+            for (String property : sObjMap.keySet()) {
+
+                SObjectField field = fieldsMap.get(property.toLowerCase());
+
+                if (field != null) {
+                    try {
+                        Object fieldValue = sObjMap.get(property);
+                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
+                            DisplayType fieldDisplayType = field.getDescribe().type;
+                            String fieldValueStr = (String) fieldValue;
+
+                            if (fieldDisplayType == DisplayType.DATE) {
+                                fieldValue = Date.valueOf(fieldValueStr);
+                            } else if (fieldDisplayType == DisplayType.DATETIME) {
+                                if (!fieldValueStr.startsWith('"')) {
+                                    fieldValueStr = '"' + fieldValueStr;
+                                }
+                                if (!fieldValueStr.endsWith('"')) {
+                                    fieldValueStr = fieldValueStr + '"';
+                                }
+                                fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
+                            } else if (fieldDisplayType == DisplayType.TIME) {
+                                //TODO: check AM PM
+                                if (fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM')) {
+                                    fieldValue = jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase());
+                                } else {
+                                    fieldValue = jam.dates.timeStringToTime(fieldValueStr);
+                                }
+                            } else if (new Set<DisplayType>{
+                                    DisplayType.DOUBLE, DisplayType.CURRENCY
+                            }.contains(fieldDisplayType)) {
+                                fieldValue = String.isBlank(fieldValueStr) ? null : Decimal.valueOf(fieldValueStr);
+                            } else if (new Set<DisplayType>{
+                                    DisplayType.INTEGER
+                            }.contains(fieldDisplayType)) {
+                                fieldValue = String.isBlank(fieldValueStr) ? null : Integer.valueOf(fieldValueStr);
+                            } else if (DisplayType.BASE64 == fieldDisplayType) {
+                                fieldValue = EncodingUtil.base64Decode(fieldValueStr);
+                            } else if (DisplayType.BOOLEAN == fieldDisplayType) {
+                                fieldValue = Boolean.valueOf(fieldValue);
+                            }
+                        }
+                        if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
+                            sObj.put(property, (Long) fieldValue);
+                        } else {
+                            sObj.put(property, fieldValue);
+                        }
+                    } catch (SObjectException ex) {
+                    } catch (Exception ex) {
+                        throw ex;
+                    }
+                } else {
+                    Boolean isCustomSObjectField = property.endsWithIgnoreCase('__c');
+                    if (isCustomSObjectField && skipValidation != true) {
+                        throw new jam.MissingDataException(String.format(
+                                'No Field with name {0} on {1}',
+                                new List<String>{
+                                        property,
+                                        '' + sObj
+                                }
+                        ));
+                    }
+                }
+            }
+            return sObj;
+        }
+
+        //TODO: review and merge with populateSObjectFields
+        public SObject populateSObjectFieldsVF(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation) {
+            Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
+            for (String property : sObjMap.keySet()) {
+
+                SObjectField field = fieldsMap.get(property.toLowerCase());
+
+                if (field != null) {
+                    try {
+                        Object fieldValue = sObjMap.get(property);
+                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
+                            DisplayType fieldDisplayType = field.getDescribe().type;
+                            String fieldValueStr = (String) fieldValue;
+
+                            if (fieldDisplayType == DisplayType.DATE) {
+                                fieldValue = jam.dates.parseDateAusFormat((String) fieldValue);
+                            } else if (fieldDisplayType == DisplayType.DATETIME) {
+                                fieldValue = jam.dates.parseDatetimeAusFormat((String) fieldValue);
+                            } else if (fieldDisplayType == DisplayType.TIME) {
+                                Datetime dt = jam.dates.parseDatetimeAnyFormat((String) fieldValue, 'hh:mm a');
+                                fieldValue = dt == null ? fieldValue : dt.time();
+                            } else if (fieldDisplayType == DisplayType.BOOLEAN) {
+                                fieldValue = 'Yes'.equalsIgnoreCase((String) fieldValue) ? true : false;
+                            } else if (new Set<DisplayType>{
+                                    DisplayType.DOUBLE, DisplayType.CURRENCY
+                            }.contains(fieldDisplayType)) {
+                                fieldValue = String.isBlank(fieldValueStr) ? null : Decimal.valueOf(fieldValueStr);
+                            } else if (new Set<DisplayType>{
+                                    DisplayType.INTEGER
+                            }.contains(fieldDisplayType)) {
+                                fieldValue = String.isBlank(fieldValueStr) ? null : Integer.valueOf(fieldValueStr);
+                            }
+                        }
+                        if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
+                            sObj.put(property, (Long) fieldValue);
+                        } else {
+                            sObj.put(property, fieldValue);
+                        }
+                    } catch (SObjectException ex) {
+                    } catch (Exception ex) {
+                        throw ex;
+                    }
+                } else {
+                    Boolean isCustomSObjectField = property.endsWithIgnoreCase('__c');
+                    if (isCustomSObjectField && skipValidation != true) {
+                        throw new jam.MissingDataException(String.format(
+                                'No Field with name {0} on {1}',
+                                new List<String>{
+                                        property,
+                                        '' + sObj
+                                }
+                        ));
+                    }
+                }
+            }
+            return sObj;
         }
     }
 
@@ -1835,9 +1724,6 @@ global inherited sharing class jam {
     }
 
     public inherited sharing class ArrayExtensions {
-
-        private final Pattern ARRAY_NOTATION = Pattern.compile('\\[(\\d+)]');
-
         public Object firstOrDefault(List<Object> records, Object defaultVar) {
             return records.isEmpty() ? defaultVar : records[0];
         }
@@ -1891,94 +1777,6 @@ global inherited sharing class jam {
 
         public void addToListOrCreateNew(Map<String, List<Object>> dataMap, Type listType, String key, Object obj) {
             this.addToListOrCreateNew(dataMap, listType, key, obj, null);
-        }
-
-        public Object getMapValue(Map<String, Object> dataMap, String path) {
-            return this.getMapValue(dataMap, path.split('\\.'));
-        }
-
-        public Object getMapValue(Map<String, Object> dataMap, List<String> path) {
-
-            List<String> currentKeys = path;
-            Map<String, Object> tempMap = dataMap;
-            List<Object> tempArr = null;
-
-            while (!currentKeys.isEmpty()) {
-
-                if (tempMap == null && tempArr == null) {
-                    return null;
-                }
-
-                String key = currentKeys.remove(0);
-
-                Matcher arrayMatcher = ARRAY_NOTATION.matcher(key);
-                Boolean isArrayKey = arrayMatcher.matches();
-                Integer index = isArrayKey ? Integer.valueOf(arrayMatcher.group(1)) : null;
-
-                if (isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)) {
-                    return null;
-                }
-
-                Object val = isArrayKey ? tempArr.get(index) : tempMap.get(key);
-
-                Boolean isLastKey = currentKeys.isEmpty();
-
-                if (isLastKey == true) {
-                    return val;
-                } else {
-                    if (val instanceof List<Object>) {
-                        tempArr = (List<Object>) val;
-                    } else {
-                        Object t = isArrayKey ?
-                                tempArr.get(index) :
-                                tempMap.get(key);
-
-                        if (t instanceof Map<String, Object>) {
-                            tempMap = (Map<String, Object>) t;
-                            tempArr = null;
-                        } else {
-                            return null;
-                        }
-                    }
-                }
-
-            }
-            return null;
-        }
-
-        public void setMapValue(Map<String, Object> dataMap, String path, Object value) {
-            this.setMapValue(dataMap, path.split('\\.'), value);
-        }
-
-        public void setMapValue(Map<String, Object> dataMap, List<String> path, Object value) {
-            List<String> currentKeys = path;
-            Map<String, Object> tempMap = dataMap;
-
-            while (!currentKeys.isEmpty()) {
-
-                if (tempMap == null) {
-                    return;
-                }
-
-                String key = currentKeys.remove(0);
-
-                Boolean isLastKey = currentKeys.isEmpty();
-
-                if (isLastKey == true) {
-                    tempMap.put(key, value);
-                } else {
-                    if (!tempMap.containsKey(key)) {
-                        tempMap.put(key, new Map<String, Object>());
-                    }
-                    tempMap = (Map<String, Object>) tempMap.get(key);
-                }
-
-            }
-
-        }
-
-        public Boolean mapContains(Map<String, Object> dataMap, String path) {
-            return getMapValue(dataMap, path) != null;
         }
 
         //Example: jam.arrays.split(new List<Integer>{1, 2, 3, 4, 5, 6, 7, 8, 9 ,10}, 2, List<Integer>.class)
@@ -2061,7 +1859,6 @@ global inherited sharing class jam {
     }
 
     global inherited sharing class ObjectExtensions {
-
         global jam.Action getAction(String actionName) {
             return getAction(actionName, 'No Processor Type with Name: ' + actionName);
         }
@@ -2072,7 +1869,7 @@ global inherited sharing class jam {
 
             List<String> actionParts = actionName.split('.');
 
-            if(actionParts.size() == 2) {
+            if (actionParts.size() == 2) {
                 namespace = actionParts[0];
                 className = actionParts[0];
             }
@@ -2141,6 +1938,94 @@ global inherited sharing class jam {
         public String defaultIfNull(String val, String defaultVal) {
             return val == null ? defaultVal : val;
         }
+
+        public Object getMapValue(Map<String, Object> dataMap, String path) {
+            return this.getMapValue(dataMap, path.split('\\.'));
+        }
+
+        public Object getMapValue(Map<String, Object> dataMap, List<String> path) {
+
+            List<String> currentKeys = path;
+            Map<String, Object> tempMap = dataMap;
+            List<Object> tempArr = null;
+
+            while (!currentKeys.isEmpty()) {
+
+                if (tempMap == null && tempArr == null) {
+                    return null;
+                }
+
+                String key = currentKeys.remove(0);
+                Pattern arrayNotation = Pattern.compile('\\[(\\d+)]');
+                Matcher arrayMatcher = arrayNotation.matcher(key);
+                Boolean isArrayKey = arrayMatcher.matches();
+                Integer index = isArrayKey ? Integer.valueOf(arrayMatcher.group(1)) : null;
+
+                if (isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)) {
+                    return null;
+                }
+
+                Object val = isArrayKey ? tempArr.get(index) : tempMap.get(key);
+
+                Boolean isLastKey = currentKeys.isEmpty();
+
+                if (isLastKey == true) {
+                    return val;
+                } else {
+                    if (val instanceof List<Object>) {
+                        tempArr = (List<Object>) val;
+                    } else {
+                        Object t = isArrayKey ?
+                                tempArr.get(index) :
+                                tempMap.get(key);
+
+                        if (t instanceof Map<String, Object>) {
+                            tempMap = (Map<String, Object>) t;
+                            tempArr = null;
+                        } else {
+                            return null;
+                        }
+                    }
+                }
+
+            }
+            return null;
+        }
+
+        public void setMapValue(Map<String, Object> dataMap, String path, Object value) {
+            this.setMapValue(dataMap, path.split('\\.'), value);
+        }
+
+        public void setMapValue(Map<String, Object> dataMap, List<String> path, Object value) {
+            List<String> currentKeys = path;
+            Map<String, Object> tempMap = dataMap;
+
+            while (!currentKeys.isEmpty()) {
+
+                if (tempMap == null) {
+                    return;
+                }
+
+                String key = currentKeys.remove(0);
+
+                Boolean isLastKey = currentKeys.isEmpty();
+
+                if (isLastKey == true) {
+                    tempMap.put(key, value);
+                } else {
+                    if (!tempMap.containsKey(key)) {
+                        tempMap.put(key, new Map<String, Object>());
+                    }
+                    tempMap = (Map<String, Object>) tempMap.get(key);
+                }
+
+            }
+
+        }
+
+        public Boolean mapContains(Map<String, Object> dataMap, String path) {
+            return getMapValue(dataMap, path) != null;
+        }
     }
 
     //TODO: move to inner
@@ -2194,5 +2079,123 @@ global inherited sharing class jam {
         }
 
         return lstOut;
+    }
+
+    public inherited sharing class MissingDataException extends Exception {
+    }
+    public inherited sharing class ValidationException extends Exception {
+    }
+    public inherited sharing class ProcessException extends Exception {
+    }
+
+    //UTILS ALIASES
+    public static PicklistExtensions picklists {
+        get {
+            if (picklists == null) {
+                picklists = new PicklistExtensions();
+            }
+            return picklists;
+        }
+        private set;
+    }
+
+    public static DateExtensions dates {
+        get {
+            if (dates == null) {
+                dates = new DateExtensions();
+            }
+            return dates;
+        }
+        private set;
+    }
+
+    public static StringExtensions strings {
+        get {
+            if (strings == null) {
+                strings = new StringExtensions();
+            }
+            return strings;
+        }
+        private set;
+    }
+
+    public static UserExtensions users {
+        get {
+            if (users == null) {
+                users = new UserExtensions();
+            }
+            return users;
+        }
+        private set;
+    }
+
+    public static SObjectExtensions sObjects {
+        get {
+            if (sObjects == null) {
+                sObjects = new SObjectExtensions();
+            }
+            return sObjects;
+        }
+        private set;
+    }
+
+    public static URLExtensions URLs {
+        get {
+            if (URLs == null) {
+                URLs = new URLExtensions();
+            }
+            return URLs;
+        }
+        private set;
+    }
+
+    public static EncodingExtensions encodings {
+        get {
+            if (encodings == null) {
+                encodings = new EncodingExtensions();
+            }
+            return encodings;
+        }
+        private set;
+    }
+
+    public static ArrayExtensions arrays {
+        get {
+            if (arrays == null) {
+                arrays = new ArrayExtensions();
+            }
+            return arrays;
+        }
+        private set;
+    }
+
+    public static OrgExtensions orgs {
+        get {
+            if (orgs == null) {
+                orgs = new OrgExtensions();
+            }
+            return orgs;
+        }
+        private set;
+    }
+
+    public static ObjectExtensions objects {
+        get {
+            if (objects == null) {
+                objects = new ObjectExtensions();
+            }
+            return objects;
+        }
+        private set;
+    }
+
+    public static TemplateExtensions templates {
+        get {
+            if (templates == null) {
+                templates = new TemplateExtensions();
+            }
+            return templates;
+        }
+        private set;
     }
 }
