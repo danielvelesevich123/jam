@@ -1,7 +1,6 @@
 global inherited sharing class jam {
     //TODO: add uow
     global static jam.Response run(String action, String requestJSON) {
-
         Savepoint savepoint;
 
         try {
@@ -1319,7 +1318,7 @@ global inherited sharing class jam {
 
                         for (Datacloud.MatchResult matchRes : dupeRes.getMatchResults()) {
                             for (Datacloud.MatchRecord matchRec : matchRes.getMatchRecords()) {
-                                recordVar.Id = (string) matchRec.getRecord().get('id');
+                                recordVar.Id = (String) matchRec.getRecord().get('id');
                                 jam.sObjects.restoreNotBlankValues(new List<SObject>{
                                         recordVar
                                 }, preserveFields);
@@ -1471,7 +1470,7 @@ global inherited sharing class jam {
                             }
 
                             if (fieldDisplayType == DisplayType.DATETIME) {
-                                if(isVisualforce == true) {
+                                if (isVisualforce == true) {
                                     fieldValue = jam.dates.parseDatetimeAusFormat(fieldValueStr);
                                     continue;
                                 }
@@ -1487,7 +1486,7 @@ global inherited sharing class jam {
                             }
 
                             if (fieldDisplayType == DisplayType.TIME) {
-                                if(isVisualforce == true) {
+                                if (isVisualforce == true) {
                                     Datetime dt = jam.dates.parseDatetimeAnyFormat(fieldValueStr, 'hh:mm a');
                                     fieldValue = dt == null ? fieldValue : dt.time();
                                     continue;
@@ -1550,17 +1549,18 @@ global inherited sharing class jam {
     public inherited sharing class URLExtensions {
 
         public String generateReportURL(String reportAPIName, List<String> paramValues) {
-            return generateReportURL(reportAPIName, paramValues, true);
+            return generateReportURL(reportAPIName, paramValues, true, null);
         }
 
-        public String generateReportURL(String reportAPIName, List<String> paramValues, Boolean isSecurityEnforced) {
+        public String generateReportURL(String reportAPIName, List<String> paramValues, Boolean isSecurityEnforced, String namespacePrefix) {
 
             String reportQuery = 'SELECT Id, Name\n' +
                     'FROM Report\n' +
-                    'WHERE DeveloperName = :reportAPIName AND NamespacePrefix = \'maica\'';
+                    'WHERE DeveloperName = :reportAPIName AND NamespacePrefix = :namespacePrefix' +
+                    (isSecurityEnforced == true ? ' WITH USER_MODE' : '');
 
             Report reportId = (Report) jam.arrays.firstOrNull(
-                    Database.query(reportQuery + (isSecurityEnforced == true ? ' WITH USER_MODE' : ''))
+                    Database.query(reportQuery)
             );
 
             List<String> reportParams = new List<String>();
@@ -1958,8 +1958,6 @@ global inherited sharing class jam {
 
     //TODO: move to inner
     private class TPicklistEntry {
-        public String active { get; set; }
-        public String defaultValue { get; set; }
         public String label { get; set; }
         public String value { get; set; }
         public String validFor { get; set; }
