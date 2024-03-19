@@ -113,7 +113,7 @@ global inherited sharing class jam {
         }
 
         public jam.Action getSObject(String path, SObject sObj) {
-            if(this.request != null) {
+            if (this.request != null) {
                 this.request.getSObject(path, sObj);
             }
 
@@ -121,7 +121,7 @@ global inherited sharing class jam {
         }
 
         public jam.Action getSObject(String path, SObject sObj, Boolean skipValidation) {
-            if(this.request != null) {
+            if (this.request != null) {
                 this.request.getSObject(path, sObj, skipValidation);
             }
 
@@ -197,6 +197,11 @@ global inherited sharing class jam {
 
         public DTO(Map<String, Object> requestMap) {
             this.dto = requestMap == null ? this.dto : requestMap;
+        }
+
+        public DTO(String path, String arrayJSON) {
+            Object arrayObject = JSON.deserializeUntyped(arrayJSON);
+            jam.objects.setMapValue(this.dto, path, arrayObject instanceof List<Object> ? arrayObject : null);
         }
 
         public DTO setIsVisualforce(Boolean value) {
@@ -362,7 +367,6 @@ global inherited sharing class jam {
             return getSObjects(path, sObjectTypeVar, false);
         }
 
-        //TODO: DTO constructor(arrayPath, JSONarray);
         public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
 
             List<Object> values = (List<Object>) jam.objects.getMapValue(this.dto, path);
@@ -384,8 +388,8 @@ global inherited sharing class jam {
 
         //SETTERS
         public DTO put(Map<String, Object> mapVar) {
-            for (String key : mapVar.keySet()) {
-                jam.objects.setMapValue(this.dto, key, mapVar.get(key));
+            for (String path : mapVar.keySet()) {
+                jam.objects.setMapValue(this.dto, path, mapVar.get(path));
             }
             return this;
         }
@@ -1690,30 +1694,53 @@ global inherited sharing class jam {
         }
     }
 
-    //TODO: remove OrgExtensions and add getter
-    private static Boolean isSandbox;
 
-    public inherited sharing class OrgExtensions {
-
-        public Boolean isSandbox() {
-
-            if (isSandbox == null) {
-                List<Organization> organizations = [
-                        SELECT IsSandbox
+    public static Organization currentOrg {
+        get {
+            if (currentOrg == null) {
+                currentOrg = (Organization) jam.arrays.firstOrException([
+                        SELECT IsSandbox, TrialExpirationDate
                         FROM Organization
                         WHERE Id = :UserInfo.getOrganizationId()
-                ];
-
-                if (organizations.isEmpty()) {
-                    throw new jam.MissingDataException('No Organisation');
-                }
-
-                isSandbox = organizations.get(0).IsSandbox == true;
+                ], ' No Organisation');
             }
-
-            return isSandbox;
+            return currentOrg;
         }
+        private set;
+    }
 
+    public static Boolean isSandbox {
+        get {
+            return currentOrg.IsSandbox && currentOrg.TrialExpirationDate == null;
+        }
+        private set;
+    }
+
+    public static Boolean isScratch {
+        get {
+            return currentOrg.IsSandbox && currentOrg.TrialExpirationDate != null;
+        }
+        private set;
+    }
+
+    public static Boolean isTrialOrg {
+        get {
+            return !currentOrg.IsSandbox && currentOrg.TrialExpirationDate != null;
+        }
+        private set;
+    }
+
+    public static List<Holiday> holidays {
+        get {
+            if (holidays == null) {
+                holidays = [
+                        SELECT StartTimeInMinutes, EndTimeInMinutes, Name, ActivityDate, Description, IsAllDay, IsRecurrence, NextOccurrenceDate
+                        FROM Holiday
+                ];
+            }
+            return holidays;
+        }
+        private set;
     }
 
     public inherited sharing class EncodingExtensions {
@@ -2192,16 +2219,6 @@ global inherited sharing class jam {
                 arrays = new ArrayExtensions();
             }
             return arrays;
-        }
-        private set;
-    }
-
-    public static OrgExtensions orgs {
-        get {
-            if (orgs == null) {
-                orgs = new OrgExtensions();
-            }
-            return orgs;
         }
         private set;
     }
