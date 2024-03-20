@@ -5,7 +5,7 @@ global inherited sharing class jam {
 
         try {
             jam.Action actionVar = jam.objects.getAction(action);
-            jam.DTO requestVar = new jam.DTO(requestJSON);
+            jam.DTO requestVar = actionVar.initRequest(requestJSON);
 
             Boolean doesPerformCallout = actionVar instanceof Database.AllowsCallouts;
 
@@ -51,7 +51,11 @@ global inherited sharing class jam {
         protected DTO response = new DTO(new Map<String, Object>());
 
         global virtual DTO run(Map<String, Object> requestMap) {
-            return this.run(new DTO(requestMap));
+            return this.run(this.initRequest(requestMap));
+        }
+
+        global virtual DTO run(String requestJSON) {
+            return this.run(this.initRequest(requestJSON));
         }
 
         global virtual DTO run(DTO request) {
@@ -62,6 +66,14 @@ global inherited sharing class jam {
         }
 
         global abstract void run();
+
+        public virtual DTO initRequest(String requestJSON) {
+            return new DTO(requestJSON);
+        }
+
+        public virtual DTO initRequest(Map<String, Object> requestMap) {
+            return new DTO(requestMap);
+        }
 
         //GETTER ALIASES
         public Object get(String path) {
