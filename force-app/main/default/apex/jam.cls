@@ -68,7 +68,7 @@ global inherited sharing class jam {
         global abstract void run();
 
         public virtual DTO initRequest(String requestJSON) {
-            return new DTO(requestJSON);
+            return this.initRequest((Map<String, Object>) JSON.deserializeUntyped(requestJSON));
         }
 
         public virtual DTO initRequest(Map<String, Object> requestMap) {
@@ -199,7 +199,6 @@ global inherited sharing class jam {
         public Object defaultFieldValue = '';
 
         //CONSTRUCTORS
-        //TODO: DTO constructor(arrayPath, JSONarray);
         public DTO() {
         }
 
