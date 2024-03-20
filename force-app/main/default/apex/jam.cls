@@ -213,7 +213,7 @@ global inherited sharing class jam {
 
         public DTO(String path, String arrayJSON) {
             Object arrayObject = JSON.deserializeUntyped(arrayJSON);
-            jam.objects.setMapValue(this.dto, path, arrayObject instanceof List<Object> ? arrayObject : null);
+            jam.objects.setMapValue(this.dto, path, arrayObject);
         }
 
         public DTO setIsVisualforce(Boolean value) {
