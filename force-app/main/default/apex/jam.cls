@@ -49,17 +49,17 @@ global inherited sharing class jam {
 
     public abstract class Action {
         protected DTO request;
-        protected DTO response = new DTO(new Map<String, Object>());
+        protected jam.Response response = new jam.Response(new Map<String, Object>());
 
-        public virtual DTO run(Map<String, Object> requestMap) {
+        public virtual jam.Response run(Map<String, Object> requestMap) {
             return this.run(this.initRequest(requestMap));
         }
 
-        public virtual DTO run(String requestJSON) {
+        public virtual jam.Response run(String requestJSON) {
             return this.run(this.initRequest(requestJSON));
         }
 
-        public virtual DTO run(DTO request) {
+        public virtual jam.Response run(DTO request) {
             this.request = request;
 //            this.initSelectOptions();
             this.run();
