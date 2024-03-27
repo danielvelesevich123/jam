@@ -2097,7 +2097,57 @@ global inherited sharing class jam {
                 }
 
             }
+        }
 
+        public void removeMapValue(Map<String, Object> dataMap, String path) {
+            this.removeMapValue(dataMap, path == null ? null : path.split('\\.'));
+        }
+        public void removeMapValue(Map<String, Object> dataMap, List<String> path) {
+
+            List<String> currentKeys = path == null ? new List<String>{null} : path;
+            Map<String, Object> tempMap = dataMap;
+            List<Object> tempArr = null;
+
+            while (!currentKeys.isEmpty()) {
+
+                if (tempMap == null && tempArr == null) {
+                    return;
+                }
+
+                String key = currentKeys.remove(0);
+
+                Pattern arrayNotation = Pattern.compile('\\[(\\d+)]');
+                Matcher arrayMatcher = key == null ? null : arrayNotation.matcher(key);
+                Boolean isArrayKey = arrayMatcher == null ? false : arrayMatcher.matches();
+                Integer index = isArrayKey ? Integer.valueOf(arrayMatcher.group(1)) : null;
+
+                if(isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)){
+                    return;
+                }
+
+                Object val = isArrayKey ? tempArr.get(index) : tempMap.get(key);
+
+                Boolean isLastKey = currentKeys.isEmpty();
+
+                if (isLastKey == true) {
+                    if (isArrayKey) {
+                        tempArr.remove(index);
+                    } else {
+                        tempMap.remove(key);
+                    }
+                    return;
+                } else {
+                    if(val instanceof List<Object>){
+                        tempArr = (List<Object>) val;
+                    } else {
+                        tempMap = isArrayKey ?
+                                (Map<String, Object>)tempArr.get(index) :
+                                (Map<String, Object>)tempMap.get(key);
+                        tempArr = null;
+                    }
+                }
+
+            }
         }
 
         public Boolean mapContains(Map<String, Object> dataMap, String path) {

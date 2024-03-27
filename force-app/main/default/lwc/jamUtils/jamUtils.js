@@ -35,11 +35,11 @@ const runAction = async (action, request) => {
 };
 
 const validateComponents = (components) => {
-    var validationResult = {
+    let validationResult = {
         errorsByInputs: [],
         allValid: true,
         getErrorMessages: function () {
-            var errors = [];
+            let errors = [];
             this.errorsByInputs.forEach(function (errorsByInput) {
                 errors.push(errorsByInput.errors.join(','));
             })
@@ -50,7 +50,7 @@ const validateComponents = (components) => {
 
     components.forEach(function (inputCmp) {
 
-        var validationErrors = [
+        let validationErrors = [
             'badInput',
             'customError',
             'patternMismatch',
@@ -63,7 +63,7 @@ const validateComponents = (components) => {
             'valueMissing'
         ];
 
-        var defaultErrorMessages = {
+        let defaultErrorMessages = {
             badInput: 'Enter a valid value.',
             patternMismatch: 'Your entry does not match the allowed pattern.',
             rangeOverflow: 'The number is too high.',
@@ -82,8 +82,8 @@ const validateComponents = (components) => {
 
         if (inputCmp) {
 
-            if (inputCmp.validity == undefined) {
-                if (inputCmp.validate != undefined && !inputCmp.validate()) {
+            if (inputCmp.validity === undefined) {
+                if (inputCmp.validate !== undefined && !inputCmp.validate()) {
                     let errorMessages = (inputCmp.errorMessages || [])?.filter(error => error?.message ? error?.message !== 'Complete this field.' : error !== 'Complete this field.');
                     if (!errorMessages || errorMessages.length === 0) {
                         errorMessages = [inputCmp.label + ': Complete this field.'];
@@ -94,34 +94,10 @@ const validateComponents = (components) => {
                     });
                     validationResult.allValid = false;
                 }
-                //
-                // var hasShowErrorMethod = inputCmp.get('c.showError') != undefined;
-                // var hasHideErrorMethod = inputCmp.get('c.hideError') != undefined;
-                // if(hasShowErrorMethod == true){
-                //
-                //     var isRequired = inputCmp.get('v.required');
-                //     var isEmptyValue = $A.util.isEmpty(inputCmp.get('v.value'));
-                //
-                //     if (isRequired && isEmptyValue){
-                //
-                //         inputCmp.showError('Complete this field.');
-                //
-                //         validationResult.errorsByInputs.push({
-                //             inputCmp: inputCmp,
-                //             errors: [
-                //                 inputCmp.get('v.label') + ': Complete this field.'
-                //             ]
-                //         });
-                //
-                //         validationResult.allValid = false;
-                //     } else if (hasHideErrorMethod == true) {
-                //         inputCmp.hideError();
-                //     }
-                // }
 
             } else if (inputCmp.validity && inputCmp.validity.valid === false) {
 
-                var errors = [];
+                let errors = [];
                 validationErrors.forEach(function (validationError) {
                     if (inputCmp.validity[validationError] === true) {
                         let errorMessageField = 'message-when-' + capitalizeFirstLetter(validationError);
@@ -144,7 +120,7 @@ const validateComponents = (components) => {
 
                 validationResult.allValid = false;
 
-                if (inputCmp.reportValidity != undefined) {
+                if (inputCmp.reportValidity !== undefined) {
                     inputCmp.reportValidity();
                 }
 
@@ -160,7 +136,7 @@ const validate = (containerComponent, options) => {
     options = options || {}
     options.additionalComponentTypes = options.additionalComponentTypes || [];
 
-    var componentTypes = [
+    let componentTypes = [
         'lightning-input',
         'lightning-input-address',
         'lightning-input-field',
@@ -171,12 +147,7 @@ const validate = (containerComponent, options) => {
         'lightning-select',
         'lightning-combobox',
         'lightning-radio-group',
-        'lightning-checkbox-group',
-        'c-vertic-multi-select',
-        'c-vertic-counter',
-        'c-vertic-google-address',
-        'c-vertic-lookup',
-        'c-vertic-select'
+        'lightning-checkbox-group'
     ];
 
     componentTypes = componentTypes.concat(options.additionalComponentTypes);
@@ -263,7 +234,7 @@ const formatName = val => {
         val = val.split(' ').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(' ');
         val = val.split('-').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('-');
 
-        // If field has an apostrophe as the second character (eg. O'Donnel) also capitalise the letter after the apostrophe;
+        // If field has an apostrophe as the second character (e.g. O'Don) also capitalise the letter after the apostrophe;
         val = val.split('\'').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('\'');
         val = val.split('`').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('\'');
 
