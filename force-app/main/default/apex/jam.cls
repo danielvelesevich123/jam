@@ -24,7 +24,6 @@ global inherited sharing class jam {
         }
     }
 
-    //TODO: add uow
     public static jam.Response run(String action, String requestJSON) {
         Savepoint savepoint;
 
@@ -318,7 +317,7 @@ global inherited sharing class jam {
 
             if (value != null) {
                 Map<String, Object> dataMap = (Map<String, Object>) value;
-                jam.sObjects.populateSObject(sObj, dataMap, skipValidation, this.isVisualforce);
+                jam.sObjects.mapToSObject(sObj, dataMap, skipValidation, this.isVisualforce);
             }
 
             return this;
@@ -392,7 +391,7 @@ global inherited sharing class jam {
             for (Object value : values) {
                 SObject sObj = sObjectTypeVar.newSObject();
                 Map<String, Object> dataMap = (Map<String, Object>) value;
-                sObjects.add(jam.sObjects.populateSObject(sObj, dataMap, skipValidation, this.isVisualforce));
+                sObjects.add(jam.sObjects.mapToSObject(sObj, dataMap, skipValidation, this.isVisualforce));
             }
 
             return sObjects;
@@ -416,7 +415,7 @@ global inherited sharing class jam {
                 return null;
             }
 
-            Map<String, Object> dataMap = jam.sObjects.castSObjectToMap(sObj, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
+            Map<String, Object> dataMap = jam.sObjects.sObjectToMap(sObj, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
 
             jam.objects.setMapValue(
                     this.dto,
@@ -444,7 +443,6 @@ global inherited sharing class jam {
                     sObjects.remove(sObjects.size() - 1);
                 }
 
-                //TODO: move to generic method and apply to put[Arrays]
                 recordsPath = path + '.records';
                 String hasMorePath = path + '.hasMore';
                 String limitPath = path + '.limit';
@@ -459,7 +457,7 @@ global inherited sharing class jam {
             jam.objects.setMapValue(
                     this.dto,
                     recordsPath,
-                    jam.sObjects.castSObjectsToMaps(sObjects)
+                    jam.sObjects.sObjectsToMaps(sObjects)
             );
 
             return this;
@@ -1454,9 +1452,9 @@ global inherited sharing class jam {
                     }
                 }
             } catch (System.HandledException ex) { //No active duplicate rules are defined for the object type.
-                System.debug(ex.getMessage());
+//                System.debug(ex.getMessage());
             } catch (Exception ex) {
-                System.debug(ex.getMessage()); // Other issue.
+//                System.debug(ex.getMessage()); // Other issue.
             }
             return false;
         }
@@ -1491,41 +1489,41 @@ global inherited sharing class jam {
             return dto.dto;
         }
 
-        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects) {
-            return castSObjectsToMaps(sObjects, '');
+        public List<Map<String, Object>> sObjectsToMaps(List<SObject> sObjects) {
+            return sObjectsToMaps(sObjects, '');
         }
 
-        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue) {
-            return castSObjectsToMaps(sObjects, defaultFieldValue, false);
+        public List<Map<String, Object>> sObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue) {
+            return sObjectsToMaps(sObjects, defaultFieldValue, false);
         }
 
-        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue, Boolean isAllFields) {
-            return castSObjectsToMaps(sObjects, defaultFieldValue, isAllFields, false);
+        public List<Map<String, Object>> sObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue, Boolean isAllFields) {
+            return sObjectsToMaps(sObjects, defaultFieldValue, isAllFields, false);
         }
 
-        public List<Map<String, Object>> castSObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue, Boolean isAllFields, Boolean isVisualforce) {
+        public List<Map<String, Object>> sObjectsToMaps(List<SObject> sObjects, Object defaultFieldValue, Boolean isAllFields, Boolean isVisualforce) {
             List<Map<String, Object>> sObjMaps = new List<Map<String, Object>>();
 
             for (SObject sObj : sObjects) {
-                sObjMaps.add(this.castSObjectToMap(sObj, defaultFieldValue, isAllFields, isVisualforce));
+                sObjMaps.add(this.sObjectToMap(sObj, defaultFieldValue, isAllFields, isVisualforce));
             }
 
             return sObjMaps;
         }
 
-        public Map<String, Object> castSObjectToMap(SObject sObj) {
-            return castSObjectToMap(sObj, '');
+        public Map<String, Object> sObjectToMap(SObject sObj) {
+            return sObjectToMap(sObj, '');
         }
 
-        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue) {
-            return castSObjectToMap(sObj, defaultFieldValue, false);
+        public Map<String, Object> sObjectToMap(SObject sObj, Object defaultFieldValue) {
+            return sObjectToMap(sObj, defaultFieldValue, false);
         }
 
-        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
-            return castSObjectToMap(sObj, defaultFieldValue, isAllFields, false);
+        public Map<String, Object> sObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields) {
+            return sObjectToMap(sObj, defaultFieldValue, isAllFields, false);
         }
 
-        public Map<String, Object> castSObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields, Boolean isVisualforce) {
+        public Map<String, Object> sObjectToMap(SObject sObj, Object defaultFieldValue, Boolean isAllFields, Boolean isVisualforce) {
             Map<String, Object> sObjMap = new Map<String, Object>();
 
             Map<String, Object> populatedFieldsMap = sObj.getPopulatedFieldsAsMap();
@@ -1541,7 +1539,7 @@ global inherited sharing class jam {
                 }
 
                 if (fieldValue instanceof SObject) {
-                    sObjMap.put(fieldName, this.castSObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields, isVisualforce));
+                    sObjMap.put(fieldName, this.sObjectToMap((SObject) fieldValue, defaultFieldValue, isAllFields, isVisualforce));
                     continue;
                 }
 
@@ -1577,7 +1575,7 @@ global inherited sharing class jam {
             return sObjMap;
         }
 
-        public SObject populateSObject(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation, Boolean isVisualforce) {
+        public SObject mapToSObject(SObject sObj, Map<String, Object> sObjMap, Boolean skipValidation, Boolean isVisualforce) {
             Map<String, SObjectField> fieldsMap = sObj.getSObjectType().getDescribe().fields.getMap();
             for (String property : sObjMap.keySet()) {
 
@@ -1586,71 +1584,52 @@ global inherited sharing class jam {
                 if (field != null) {
                     try {
                         Object fieldValue = sObjMap.get(property);
-                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
-                            DisplayType fieldDisplayType = field.getDescribe().type;
-                            String fieldValueStr = (String) fieldValue;
-
-                            if (fieldDisplayType == DisplayType.DATE) {
-                                fieldValue = isVisualforce == true ? jam.dates.parseDateAusFormat(fieldValueStr) : Date.valueOf(fieldValueStr);
-                                continue;
-                            }
-
-                            if (fieldDisplayType == DisplayType.DATETIME) {
-                                if (isVisualforce == true) {
-                                    fieldValue = jam.dates.parseDatetimeAusFormat(fieldValueStr);
-                                    continue;
-                                }
-
-                                if (!fieldValueStr.startsWith('"')) {
-                                    fieldValueStr = '"' + fieldValueStr;
-                                }
-                                if (!fieldValueStr.endsWith('"')) {
-                                    fieldValueStr = fieldValueStr + '"';
-                                }
-                                fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
-                                continue;
-                            }
-
-                            if (fieldDisplayType == DisplayType.TIME) {
-                                if (isVisualforce == true) {
-                                    Datetime dt = jam.dates.parseDatetimeAnyFormat(fieldValueStr, 'hh:mm a');
-                                    fieldValue = dt == null ? fieldValue : dt.time();
-                                    continue;
-                                }
-
-                                fieldValue = fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM') ?
-                                        jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase()) :
-                                        jam.dates.timeStringToTime(fieldValueStr);
-                                continue;
-                            }
-
-                            if (DisplayType.DOUBLE == fieldDisplayType || DisplayType.CURRENCY == fieldDisplayType) {
-                                fieldValue = Decimal.valueOf(fieldValueStr);
-                                continue;
-                            }
-
-                            if (DisplayType.INTEGER == fieldDisplayType) {
-                                fieldValue = Integer.valueOf(fieldValueStr);
-                                continue;
-                            }
-
-                            if (DisplayType.BASE64 == fieldDisplayType) {
-                                fieldValue = EncodingUtil.base64Decode(fieldValueStr);
-                                continue;
-                            }
-
-                            if (DisplayType.BOOLEAN == fieldDisplayType) {
-                                fieldValue = Boolean.valueOf(fieldValue);
-                                continue;
-                            }
-                        }
-
                         if (fieldValue instanceof Long && (fieldValue instanceof Integer) == false) {
                             sObj.put(property, (Long) fieldValue);
                             continue;
                         }
 
+                        if (fieldValue instanceof String && String.isNotBlank((String) fieldValue)) {
+                            String fieldValueStr = (String) fieldValue;
+
+                            DisplayType fieldDisplayType = field.getDescribe().type;
+
+                            if (fieldDisplayType == DisplayType.DATE) {
+                                fieldValue = isVisualforce == true ? jam.dates.parseDateAusFormat(fieldValueStr) : Date.valueOf(fieldValueStr);
+                            } else if (fieldDisplayType == DisplayType.DATETIME) {
+                                if (isVisualforce == true) {
+                                    fieldValue = jam.dates.parseDatetimeAusFormat(fieldValueStr);
+                                } else {
+                                    if (!fieldValueStr.startsWith('"')) {
+                                        fieldValueStr = '"' + fieldValueStr;
+                                    }
+                                    if (!fieldValueStr.endsWith('"')) {
+                                        fieldValueStr = fieldValueStr + '"';
+                                    }
+                                    fieldValue = jam.dates.datetimeStringToDatetime(fieldValueStr);
+                                }
+                            } else if (fieldDisplayType == DisplayType.TIME) {
+                                if (isVisualforce == true) {
+                                    Datetime dt = jam.dates.parseDatetimeAnyFormat(fieldValueStr, 'hh:mm a');
+                                    fieldValue = dt == null ? fieldValue : dt.time();
+                                } else {
+                                    fieldValue = fieldValueStr.toUpperCase().contains('AM') || fieldValueStr.toUpperCase().contains('PM') ?
+                                            jam.dates.timeStringAMPMToTime(fieldValueStr.toUpperCase()) :
+                                            jam.dates.timeStringToTime(fieldValueStr);
+                                }
+                            } else if (DisplayType.DOUBLE == fieldDisplayType || DisplayType.CURRENCY == fieldDisplayType) {
+                                fieldValue = Decimal.valueOf(fieldValueStr);
+                            } else if (DisplayType.INTEGER == fieldDisplayType) {
+                                fieldValue = Integer.valueOf(fieldValueStr);
+                            } else if (DisplayType.BASE64 == fieldDisplayType) {
+                                fieldValue = EncodingUtil.base64Decode(fieldValueStr);
+                            } else if (DisplayType.BOOLEAN == fieldDisplayType) {
+                                fieldValue = Boolean.valueOf(fieldValue);
+                            }
+                        }
+
                         sObj.put(property, fieldValue);
+                        continue;
                     } catch (SObjectException ex) {
                     } catch (Exception ex) {
                         throw ex;
@@ -1755,7 +1734,7 @@ global inherited sharing class jam {
         get {
             if (holidays == null) {
                 holidays = [
-                        SELECT StartTimeInMinutes, EndTimeInMinutes, Name, ActivityDate, Description, IsAllDay, IsRecurrence, NextOccurrenceDate
+                        SELECT StartTimeInMinutes, EndTimeInMinutes, Name, ActivityDate, Description, IsAllDay, IsRecurrence
                         FROM Holiday
                 ];
             }
@@ -1937,18 +1916,18 @@ global inherited sharing class jam {
 
     public inherited sharing class ObjectExtensions {
         public jam.Action getAction(String actionName) {
-            return getAction(actionName, 'No Processor Type with Name: ' + actionName);
+            return getAction(actionName, 'No Action with Name: ' + actionName);
         }
 
         public jam.Action getAction(String actionName, String errorMessage) {
             String namespace;
             String className = actionName;
 
-            List<String> actionParts = actionName.split('.');
+            List<String> actionParts = actionName.split('\\.');
 
             if (actionParts.size() == 2) {
                 namespace = actionParts[0];
-                className = actionParts[0];
+                className = actionParts[1];
             }
 
             Type actionType = Type.forName(namespace, className);
@@ -1959,7 +1938,7 @@ global inherited sharing class jam {
             jam.Action actionVar = (jam.Action) actionType.newInstance();
 
             if (actionVar == null) {
-                throw new jam.ProcessException('Unable to create Processor instance of type name: ' + actionName);
+                throw new jam.ProcessException('Unable to create Action instance of type name: ' + actionName);
             }
 
             return actionVar;
@@ -2097,6 +2076,7 @@ global inherited sharing class jam {
                 }
 
             }
+
         }
 
         public void removeMapValue(Map<String, Object> dataMap, String path) {
