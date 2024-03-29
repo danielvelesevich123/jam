@@ -171,23 +171,38 @@ global inherited sharing class jam {
             return this;
         }
 
+        public jam.Action put(String path, Object value, Boolean mapSobjects) {
+            this.response.put(path, value, mapSobjects);
+            return this;
+        }
+
+        public jam.Action put(String path, Object value, Integer recordsLimit) {
+            this.response.put(path, value, recordsLimit);
+            return this;
+        }
+
+        public jam.Action put(String path, Object value, Boolean mapSobjects, Integer recordsLimit) {
+            this.response.put(path, value, mapSobjects, recordsLimit);
+            return this;
+        }
+
         public jam.Action put(Map<String, Object> mapVar) {
             this.response.put(mapVar);
             return this;
         }
 
-        public jam.Action putSObject(String path, SObject sObj) {
-            this.response.put(path, sObj);
+        public jam.Action put(Map<String, Object> mapVar, Boolean mapSobjects) {
+            this.response.put(mapVar, mapSobjects);
             return this;
         }
 
-        public jam.Action putSObjects(String path, List<SObject> sObjects) {
-            this.response.put(path, sObjects);
+        public jam.Action put(Map<String, Object> mapVar, Integer recordsLimit) {
+            this.response.put(mapVar, recordsLimit);
             return this;
         }
 
-        public jam.Action putSObjects(String path, List<SObject> sObjects, Integer recordsLimit) {
-            this.response.putSObjects(path, sObjects, recordsLimit);
+        public jam.Action put(Map<String, Object> mapVar, Boolean mapSobjects, Integer recordsLimit) {
+            this.response.put(mapVar, mapSobjects, recordsLimit);
             return this;
         }
     }
@@ -399,67 +414,64 @@ global inherited sharing class jam {
 
         //SETTERS
         public DTO put(Map<String, Object> mapVar) {
+            return this.put(mapVar, true);
+        }
+
+        public DTO put(Map<String, Object> mapVar, Integer recordsLimit) {
+            return this.put(mapVar, true, recordsLimit);
+        }
+
+        public DTO put(Map<String, Object> mapVar, Boolean mapSObjects) {
+            return this.put(mapVar, mapSObjects, null);
+        }
+
+        public DTO put(Map<String, Object> mapVar, Boolean mapSObjects, Integer recordsLimit) {
             for (String path : mapVar.keySet()) {
-                this.put(path, mapVar.get(path));
+                this.put(path, mapVar.get(path), mapSObjects, recordsLimit);
             }
             return this;
         }
 
         public DTO put(String path, Object value) {
-            jam.objects.setMapValue(this.dto, path, value);
-            return this;
+            return this.put(path, value, true);
         }
 
-        public DTO putSObject(String path, SObject sObj) {
-            if (sObj == null) {
-                return null;
-            }
-
-            Map<String, Object> dataMap = jam.sObjects.sObjectToMap(sObj, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
-
-            jam.objects.setMapValue(
-                    this.dto,
-                    path,
-                    dataMap
-            );
-
-            return this;
+        public DTO put(String path, Object value, Integer recordsLimit) {
+            return this.put(path, value, true, recordsLimit);
         }
 
-        public DTO putSObjects(String path, List<SObject> sObjects) {
-            return this.putSObjects(path, sObjects, null);
+        public DTO put(String path, Object value, Boolean mapSObjects) {
+            return this.put(path, value, mapSObjects, null);
         }
 
-        public DTO putSObjects(String path, List<SObject> sObjects, Integer recordsLimit) {
-            if (sObjects == null) {
-                return null;
-            }
+        public DTO put(String path, Object value, Boolean mapSObjects, Integer recordsLimit) {
+            if (value != null) {
+                if (value instanceof List<Object>) {
+                    List<Object> resultValueArray = (List<Object>) (value instanceof List<SObject> && mapSObjects ? jam.sObjects.sObjectsToMaps((List<SObject>) value, this.defaultFieldValue, this.isAllFields, this.isVisualforce) : value);
+                    value = resultValueArray;
 
-            String recordsPath = path;
+                    if (recordsLimit != null) {
+                        Boolean hasMore = resultValueArray.size() > recordsLimit;
+                        while (resultValueArray.size() > recordsLimit) {
+                            resultValueArray.remove(resultValueArray.size() - 1);
+                        }
 
-            if (recordsLimit != null) {
-                Boolean hasMore = sObjects.size() > recordsLimit;
-                while (sObjects.size() > recordsLimit) {
-                    sObjects.remove(sObjects.size() - 1);
+                        String hasMorePath = path + '.hasMore';
+                        String limitPath = path + '.limit';
+                        String countPath = path + '.count';
+
+                        this.put(hasMorePath, hasMore);
+                        this.put(limitPath, recordsLimit);
+                        this.put(countPath, resultValueArray.size());
+
+                        path += '.records';
+                    }
+                } else if (value instanceof SObject && mapSObjects) {
+                    value = jam.sObjects.sObjectToMap((SObject) value, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
                 }
-
-                recordsPath = path + '.records';
-                String hasMorePath = path + '.hasMore';
-                String limitPath = path + '.limit';
-                String countPath = path + '.count';
-
-                this.put(hasMorePath, hasMore);
-                this.put(limitPath, recordsLimit);
-                this.put(countPath, sObjects.size());
             }
 
-            //check type
-            jam.objects.setMapValue(
-                    this.dto,
-                    recordsPath,
-                    jam.sObjects.sObjectsToMaps(sObjects)
-            );
-
+            jam.objects.setMapValue(this.dto, path, value);
             return this;
         }
     }
@@ -2084,7 +2096,9 @@ global inherited sharing class jam {
         }
         public void removeMapValue(Map<String, Object> dataMap, List<String> path) {
 
-            List<String> currentKeys = path == null ? new List<String>{null} : path;
+            List<String> currentKeys = path == null ? new List<String>{
+                    null
+            } : path;
             Map<String, Object> tempMap = dataMap;
             List<Object> tempArr = null;
 
@@ -2101,7 +2115,7 @@ global inherited sharing class jam {
                 Boolean isArrayKey = arrayMatcher == null ? false : arrayMatcher.matches();
                 Integer index = isArrayKey ? Integer.valueOf(arrayMatcher.group(1)) : null;
 
-                if(isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)){
+                if (isArrayKey && (tempArr == null || index == null || tempArr.size() <= index)) {
                     return;
                 }
 
@@ -2117,12 +2131,12 @@ global inherited sharing class jam {
                     }
                     return;
                 } else {
-                    if(val instanceof List<Object>){
+                    if (val instanceof List<Object>) {
                         tempArr = (List<Object>) val;
                     } else {
                         tempMap = isArrayKey ?
-                                (Map<String, Object>)tempArr.get(index) :
-                                (Map<String, Object>)tempMap.get(key);
+                                (Map<String, Object>) tempArr.get(index) :
+                                (Map<String, Object>) tempMap.get(key);
                         tempArr = null;
                     }
                 }
