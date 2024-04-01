@@ -1,4 +1,9 @@
-global inherited sharing class jam {
+global inherited sharing class jam implements Callable  {
+
+    global Object call(String action, Map<String, Object> dtoMap) {
+        jam.objects.throwIfBlank(action, 'Action is required');
+        return jam.objects.getAction(action).run(dtoMap).getMap();
+    }
 
     @AuraEnabled
     global static String runAction(String action, String requestJSON) {
@@ -207,79 +212,79 @@ global inherited sharing class jam {
         }
     }
 
-    public virtual class DTO {
+    global virtual class DTO {
         public Map<String, Object> dto = new Map<String, Object>();
         public Boolean isVisualforce = false;
         public Boolean isAllFields = false;
         public Object defaultFieldValue = '';
 
         //CONSTRUCTORS
-        public DTO() {
+        global DTO() {
         }
 
-        public DTO(String requestJSON) {
+        global DTO(String requestJSON) {
             this.dto = (Map<String, Object>) JSON.deserializeUntyped(requestJSON);
         }
 
-        public DTO(Map<String, Object> requestMap) {
+        global DTO(Map<String, Object> requestMap) {
             this.dto = requestMap == null ? this.dto : requestMap;
         }
 
-        public DTO(String path, String arrayJSON) {
+        global DTO(String path, String arrayJSON) {
             Object arrayObject = JSON.deserializeUntyped(arrayJSON);
             jam.objects.setMapValue(this.dto, path, arrayObject);
         }
 
-        public DTO setIsVisualforce(Boolean value) {
+        global DTO setIsVisualforce(Boolean value) {
             this.isVisualforce = value == true;
             return this;
         }
 
-        public DTO setIsAllFields(Boolean value) {
+        global DTO setIsAllFields(Boolean value) {
             this.isAllFields = value == true;
             return this;
         }
 
-        public DTO setDefaultFieldValue(Object value) {
+        global DTO setDefaultFieldValue(Object value) {
             this.defaultFieldValue = value;
             return this;
         }
 
         //GETTERS
-        public Object get(String path) {
+        global Object get(String path) {
             return jam.objects.getMapValue(this.dto, path);
         }
 
-        public String getString(String path) {
+        global String getString(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : String.valueOf(val);
         }
 
-        public String getRequiredString(String path) {
+        global String getRequiredString(String path) {
             return this.getRequiredString(path, 'The following parameter is missing in the dto: ' + path);
         }
 
-        public String getRequiredString(String path, String errorMessage) {
+        global String getRequiredString(String path, String errorMessage) {
             String val = this.getString(path);
             jam.objects.throwIfBlank(val, errorMessage);
             return val;
         }
 
-        public Integer getInteger(String path) {
+        global Integer getInteger(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : Integer.valueOf(val);
         }
 
-        public Long getLong(String path) {
+        global Long getLong(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : (val instanceof String ? Long.valueOf((String) val) : (Long) val);
         }
 
-        public Decimal getDecimal(String path) {
+        global Decimal getDecimal(String path) {
             return jam.objects.parseDecimal(jam.objects.getMapValue(this.dto, path));
         }
 
-        public Boolean getBoolean(String path) {
+        global Boolean getBoolean(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             if (val == null) {
                 return false;
@@ -290,12 +295,12 @@ global inherited sharing class jam {
             return Boolean.valueOf(val);
         }
 
-        public Date getDate(String path) {
+        global Date getDate(String path) {
             String dateStr = this.getString(path);
             return String.isBlank(dateStr) ? null : Date.valueOf(dateStr);
         }
 
-        public Time getTime(String path) {
+        global Time getTime(String path) {
             String timeStr = this.getString(path);
             if (String.isBlank(timeStr)) {
                 return null;
@@ -303,22 +308,22 @@ global inherited sharing class jam {
             return jam.dates.timeStringToTime(timeStr);
         }
 
-        public Datetime getDatetime(String path) {
+        global Datetime getDatetime(String path) {
             String datetimeStr = this.getString(path);
             return datetimeStr == null ? null : jam.dates.datetimeStringToDatetime(datetimeStr);
         }
 
-        public SObject getSObject(String path, SObjectType sObjectTypeVar) {
+        global SObject getSObject(String path, SObjectType sObjectTypeVar) {
             SObject sObj = sObjectTypeVar.newSObject();
             getSObject(path, sObj, false);
             return sObj;
         }
 
-        public DTO getSObject(String path, SObject sObj) {
+        global DTO getSObject(String path, SObject sObj) {
             return getSObject(path, sObj, false);
         }
 
-        public DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
+        global DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
             if (path == null || sObj == null) {
                 return null;
             }
@@ -338,11 +343,11 @@ global inherited sharing class jam {
             return this;
         }
 
-        public List<Object> getObjects(String path) {
+        global List<Object> getObjects(String path) {
             return (List<Object>) jam.objects.getMapValue(this.dto, path);
         }
 
-        public List<String> getStrings(String path) {
+        global List<String> getStrings(String path) {
             List<String> strings = new List<String>();
 
             List<Object> objects = (List<Object>) jam.objects.getMapValue(this.dto, path);
@@ -358,7 +363,7 @@ global inherited sharing class jam {
             return strings;
         }
 
-        public List<Map<String, Object>> getMaps(String path) {
+        global List<Map<String, Object>> getMaps(String path) {
             List<Map<String, Object>> returnList = new List<Map<String, Object>>();
 
             List<Object> objects = getObjects(path);
@@ -373,7 +378,7 @@ global inherited sharing class jam {
             return returnList;
         }
 
-        public List<DTO> getDTOs(String path) {
+        global List<DTO> getDTOs(String path) {
             List<Map<String, Object>> maps = getMaps(path);
 
             if (maps == null) {
@@ -389,11 +394,11 @@ global inherited sharing class jam {
             return returnList;
         }
 
-        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
+        global List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
             return getSObjects(path, sObjectTypeVar, false);
         }
 
-        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
+        global List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
 
             List<Object> values = (List<Object>) jam.objects.getMapValue(this.dto, path);
 
@@ -413,15 +418,15 @@ global inherited sharing class jam {
         }
 
         //SETTERS
-        public DTO put(Map<String, Object> mapVar) {
+        global DTO put(Map<String, Object> mapVar) {
             return this.put(mapVar, true);
         }
 
-        public DTO put(Map<String, Object> mapVar, Integer recordsLimit) {
+        global DTO put(Map<String, Object> mapVar, Integer recordsLimit) {
             return this.put(mapVar, true, recordsLimit);
         }
 
-        public DTO put(Map<String, Object> mapVar, Boolean mapSObjects) {
+        global DTO put(Map<String, Object> mapVar, Boolean mapSObjects) {
             return this.put(mapVar, mapSObjects, null);
         }
 
@@ -432,19 +437,19 @@ global inherited sharing class jam {
             return this;
         }
 
-        public DTO put(String path, Object value) {
+        global DTO put(String path, Object value) {
             return this.put(path, value, true);
         }
 
-        public DTO put(String path, Object value, Integer recordsLimit) {
+        global DTO put(String path, Object value, Integer recordsLimit) {
             return this.put(path, value, true, recordsLimit);
         }
 
-        public DTO put(String path, Object value, Boolean mapSObjects) {
+        global DTO put(String path, Object value, Boolean mapSObjects) {
             return this.put(path, value, mapSObjects, null);
         }
 
-        public DTO put(String path, Object value, Boolean mapSObjects, Integer recordsLimit) {
+        global DTO put(String path, Object value, Boolean mapSObjects, Integer recordsLimit) {
             if (value != null) {
                 if (value instanceof List<Object>) {
                     List<Object> resultValueArray = (List<Object>) (value instanceof List<SObject> && mapSObjects ? jam.sObjects.sObjectsToMaps((List<SObject>) value, this.defaultFieldValue, this.isAllFields, this.isVisualforce) : value);
@@ -619,6 +624,7 @@ global inherited sharing class jam {
         }
     }
 
+    //UTILS
     public inherited sharing class PicklistExtensions {
         public Set<String> getPicklistAsSetStrings(Schema.SObjectField sObjectField) {
             return getPicklistAsSetStrings(sObjectField, null);
@@ -1364,11 +1370,11 @@ global inherited sharing class jam {
             }
 
             if (existingRecord == null) {
-                throw new jam.MissingDataException('fields argument is missing');
+                throw new jam.MissingDataException('record argument is missing');
             }
 
             if (record == null) {
-                throw new jam.MissingDataException('fields argument is missing');
+                throw new jam.MissingDataException('existingRecord argument is missing');
             }
 
             for (String field : fields) {
@@ -1386,6 +1392,14 @@ global inherited sharing class jam {
         public Boolean isSomeFieldChanged(SObject record, SObject existingRecord, List<SObjectField> fields) {
             if (fields == null) {
                 throw new jam.MissingDataException('fields argument is missing');
+            }
+
+            if (existingRecord == null) {
+                throw new jam.MissingDataException('record argument is missing');
+            }
+
+            if (record == null) {
+                throw new jam.MissingDataException('existingRecord argument is missing');
             }
 
             List<String> fieldsStrings = new List<String>();
@@ -1691,7 +1705,7 @@ global inherited sharing class jam {
             }
 
             String reportURL = String.format('/lightning/r/Report/{0}/view?queryScope=userFolders{1}', new List<String>{
-                    reportId?.Id,
+                    Test.isRunningTest() ? 'test' : reportId?.Id,
                     reportParams.isEmpty() ? '' : '&' + String.join(reportParams, '&')
             });
 

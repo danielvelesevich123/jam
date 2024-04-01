@@ -205,54 +205,11 @@ const getURlParams = () => {
         }, {});
 }
 
-const formatPhone = (val, isMobile = true) => {
-    val = val.replace(/\D/g, '');
-    if (isMobile) {
-        if (val.startsWith('4')) {
-            val = '04' + val.slice(1);
-        } else if (val.startsWith('614')) {
-            val = '04' + val.slice(3);
-        }
-        if (val.startsWith('04')) {
-            let match = val.match(/^(\d{4})(\d{3})(\d{3})$/);
-            if (match) {
-                val = match[1] + ' ' + match[2] + ' ' + match[3];
-            }
-        }
-    } else {
-        let match = val.match(/^(\d{2})(\d{4})(\d{4})$/);
-        if (match) {
-            val = match[1] + ' ' + match[2] + ' ' + match[3];
-        }
-    }
-    return val;
-}
-
-const formatName = val => {
-    if (val) {
-        val = val.trim();
-        val = val.split(' ').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join(' ');
-        val = val.split('-').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('-');
-
-        // If field has an apostrophe as the second character (e.g. O'Don) also capitalise the letter after the apostrophe;
-        val = val.split('\'').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('\'');
-        val = val.split('`').map(v => v.charAt(0).toUpperCase() + v.slice(1)).join('\'');
-
-        // If field starts with Mc then the letter after Mc should also be capitalised.
-        val = val.replace(/(\bMc)([a-z])(\w*)/g, (found, gr1, gr2, gr3) => {
-            return gr1 + gr2.toUpperCase() + gr3;
-        });
-    }
-    return val;
-}
-
 export {
     showToast,
     runAction,
     validate,
     flatten,
     chunk,
-    getURlParams,
-    formatPhone,
-    formatName
+    getURlParams
 }
