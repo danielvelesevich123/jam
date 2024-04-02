@@ -581,41 +581,6 @@ global inherited sharing class jam implements Callable  {
         }
     }
 
-    public abstract class Expression {
-        public String source;
-        public List<String> params = new List<String>();
-
-        public Expression(String source) {
-            this.source = source;
-            this.parseSource();
-        }
-
-        protected abstract void parseSource();
-        protected abstract String getValue(DTO dtoVar);
-
-        public virtual String apply(DTO dtoVar, String targetStr) {
-            String expressionStrToReplace = ('{!' + this.source + '}');
-            String escapedExpressionStrToReplace = expressionStrToReplace.replaceAll('\\p{Punct}', '\\\\$0');
-            return targetStr.replaceAll(escapedExpressionStrToReplace, this.getValue(dtoVar));
-        }
-    }
-
-    public virtual class MergeFieldExpression extends Expression {
-        public MergeFieldExpression(String source) {
-            super(source);
-        }
-
-        protected override void parseSource() {
-            this.params.add(this.source);
-        }
-
-        protected override String getValue(jam.DTO dtoVar) {
-            String path = this.params.get(0);
-            String value = jam.objects.defaultIfNull(dtoVar.getString(path), '');
-            return value;
-        }
-    }
-
     private class TPicklistEntry {
         public String label { get; set; }
         public String value { get; set; }
@@ -1097,6 +1062,9 @@ global inherited sharing class jam implements Callable  {
     }
 
     public inherited sharing class StringExtensions {
+        public String defaultIfBlank(String str, String defaultValue) {
+            return String.isBlank(str) ? defaultValue : str;
+        }
 
         public String emptyStringIfNull(String str) {
             return String.isBlank(str) ? '' : str;
@@ -1721,55 +1689,6 @@ global inherited sharing class jam implements Callable  {
         }
     }
 
-
-    public static Organization currentOrg {
-        get {
-            if (currentOrg == null) {
-                currentOrg = (Organization) jam.arrays.firstOrException([
-                        SELECT IsSandbox, TrialExpirationDate
-                        FROM Organization
-                        WHERE Id = :UserInfo.getOrganizationId()
-                ], ' No Organisation');
-            }
-            return currentOrg;
-        }
-        private set;
-    }
-
-    public static Boolean isSandbox {
-        get {
-            return currentOrg.IsSandbox && currentOrg.TrialExpirationDate == null;
-        }
-        private set;
-    }
-
-    public static Boolean isScratch {
-        get {
-            return currentOrg.IsSandbox && currentOrg.TrialExpirationDate != null;
-        }
-        private set;
-    }
-
-    public static Boolean isTrialOrg {
-        get {
-            return !currentOrg.IsSandbox && currentOrg.TrialExpirationDate != null;
-        }
-        private set;
-    }
-
-    public static List<Holiday> holidays {
-        get {
-            if (holidays == null) {
-                holidays = [
-                        SELECT StartTimeInMinutes, EndTimeInMinutes, Name, ActivityDate, Description, IsAllDay, IsRecurrence
-                        FROM Holiday
-                ];
-            }
-            return holidays;
-        }
-        private set;
-    }
-
     public inherited sharing class EncodingExtensions {
 
         public String mapToFormUrlEncoded(Map<String, String> dataMap) {
@@ -1941,6 +1860,42 @@ global inherited sharing class jam implements Callable  {
 
     }
 
+    public abstract class Expression {
+        public String source;
+        public List<String> params = new List<String>();
+
+        public Expression(String source) {
+            this.source = source;
+            this.parseSource();
+        }
+
+        protected abstract void parseSource();
+        protected abstract String getValue(DTO dtoVar);
+
+        public virtual String apply(DTO dtoVar, String targetStr) {
+            String expressionStrToReplace = ('{!' + this.source + '}');
+            String escapedExpressionStrToReplace = expressionStrToReplace.replaceAll('\\p{Punct}', '\\\\$0');
+            return targetStr.replaceAll(escapedExpressionStrToReplace, this.getValue(dtoVar));
+        }
+    }
+
+    public virtual class MergeFieldExpression extends Expression {
+        public MergeFieldExpression(String source) {
+            super(source);
+        }
+
+        protected override void parseSource() {
+            this.params.add(this.source);
+        }
+
+        protected override String getValue(jam.DTO dtoVar) {
+            String path = this.params.get(0);
+            String value = jam.objects.defaultIfNull(dtoVar.getString(path), '');
+            return value;
+        }
+    }
+
+
     public inherited sharing class ObjectExtensions {
         public jam.Action getAction(String actionName) {
             return getAction(actionName, 'No Action with Name: ' + actionName);
@@ -2027,7 +1982,6 @@ global inherited sharing class jam implements Callable  {
         }
 
         public Object getMapValue(Map<String, Object> dataMap, List<String> path) {
-
             List<String> currentKeys = path;
             Map<String, Object> tempMap = dataMap;
             List<Object> tempArr = null;
@@ -2309,6 +2263,54 @@ global inherited sharing class jam implements Callable  {
                 templates = new TemplateExtensions();
             }
             return templates;
+        }
+        private set;
+    }
+
+    public static Organization currentOrg {
+        get {
+            if (currentOrg == null) {
+                currentOrg = (Organization) jam.arrays.firstOrException([
+                        SELECT IsSandbox, TrialExpirationDate
+                        FROM Organization
+                        WHERE Id = :UserInfo.getOrganizationId()
+                ], ' No Organisation');
+            }
+            return currentOrg;
+        }
+        private set;
+    }
+
+    public static Boolean isSandbox {
+        get {
+            return currentOrg.IsSandbox && currentOrg.TrialExpirationDate == null;
+        }
+        private set;
+    }
+
+    public static Boolean isScratch {
+        get {
+            return currentOrg.IsSandbox && currentOrg.TrialExpirationDate != null;
+        }
+        private set;
+    }
+
+    public static Boolean isTrialOrg {
+        get {
+            return !currentOrg.IsSandbox && currentOrg.TrialExpirationDate != null;
+        }
+        private set;
+    }
+
+    public static List<Holiday> holidays {
+        get {
+            if (holidays == null) {
+                holidays = [
+                        SELECT StartTimeInMinutes, EndTimeInMinutes, Name, ActivityDate, Description, IsAllDay, IsRecurrence
+                        FROM Holiday
+                ];
+            }
+            return holidays;
         }
         private set;
     }
