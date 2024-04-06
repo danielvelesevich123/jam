@@ -1,5 +1,9 @@
 global inherited sharing class jam implements Callable  {
 
+    /*
+    *   Callable Interface implementation allows for the execution of the Action from another package
+    *   Type.forName('packageNamespace', 'jam').newInstance().call('SampleAct', new Map<String, Object>{'key' => 'value'})
+    */
     global Object call(String action, Map<String, Object> dtoMap) {
         jam.objects.throwIfBlank(action, 'Action is required');
         jam.objects.throwIfBlank(dtoMap, 'DTO Map is required');
@@ -52,9 +56,15 @@ global inherited sharing class jam implements Callable  {
         }
     }
 
-    public abstract class Action {
+    public abstract class Action implements Queueable {
         protected DTO request;
         protected jam.Response response = new jam.Response(new Map<String, Object>());
+
+        public Action() {}
+
+        public Action(Map<String, Object> requestMap) {
+            this.request = this.initRequest(requestMap);
+        }
 
         public virtual jam.Response run(Map<String, Object> requestMap) {
             return this.run(this.initRequest(requestMap));
@@ -72,6 +82,16 @@ global inherited sharing class jam implements Callable  {
         }
 
         public abstract void run();
+
+
+        /*
+        *   Queueable Interface implementation
+        *   Allows for the execution of the Action in a Queueable context
+        *   System.enqueueJob(new SampleAct(new Map<String, Object>{'key' => 'value'}))
+         */
+        public void execute(QueueableContext context) {
+            this.run();
+        }
 
         public virtual DTO initRequest(String requestJSON) {
             return this.initRequest((Map<String, Object>) JSON.deserializeUntyped(requestJSON));
