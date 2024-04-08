@@ -58,7 +58,7 @@ global inherited sharing class jam implements Callable {
 
     public abstract class Action implements Queueable {
         protected DTO request;
-        protected jam.Response response = new jam.Response(new Map<String, Object>());
+        protected jam.Response response = new jam.Response();
 
         public Action() {
         }
@@ -501,6 +501,23 @@ global inherited sharing class jam implements Callable {
             jam.objects.setMapValue(this.dto, path, value);
             return this;
         }
+
+        //DEPRECATED. Use .put instead
+        global DTO putSObject(String path, SObject sObj) {
+            if (sObj == null) {
+                return null;
+            }
+
+            Map<String, Object> dataMap = jam.sObjects.sObjectToMap(sObj, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
+
+            jam.objects.setMapValue(
+                    this.dto,
+                    path,
+                    dataMap
+            );
+
+            return this;
+        }
     }
 
     public inherited sharing virtual class Response extends jam.DTO {
@@ -509,11 +526,23 @@ global inherited sharing class jam implements Callable {
         public jam.ErrorDetails error;
         public List<jam.ErrorDetails> errors = new List<jam.ErrorDetails>();
 
-        public Response(Map<String, Object> requestMap) {
-            this.isValid = (Boolean) requestMap.get('isValid');
-            this.dto = (Map<String, Object>) requestMap.get('dto');
-            this.error = (ErrorDetails) requestMap.get('error');
-            this.errors = (List<ErrorDetails>) requestMap.get('errors');
+        public Response() {
+            super((Map<String, Object>)null);
+        }
+
+
+        public Response(Map<String, Object> responseMap) {
+            this.isValid = (Boolean) responseMap.get('isValid');
+            this.dto = (Map<String, Object>) responseMap.get('dto');
+            this.error = (ErrorDetails) responseMap.get('error');
+            this.errors = (List<ErrorDetails>) responseMap.get('errors');
+        }
+
+        public Response(Boolean isValid, Map<String, Object> dto, ErrorDetails error, List<ErrorDetails> errors) {
+            this.isValid = isValid;
+            this.dto = dto;
+            this.error = error;
+            this.errors = errors;
         }
 
         public Response(jam.DTO requestDTO) {
@@ -566,7 +595,7 @@ global inherited sharing class jam implements Callable {
 
         public void throwIfInvalid() {
             if(!this.isValid) {
-                throw new jam.ProcessException(this.errors[0].message);
+                throw new jam.ProcessException(this.errors.size() == 0 ? 'Unknown error' : this.errors[0].message);
             }
         }
     }
@@ -590,6 +619,7 @@ global inherited sharing class jam implements Callable {
         }
     }
 
+    @JsonAccess(Serializable='always' Deserializable='always')
     public inherited sharing virtual class ErrorDetails {
         public String message { get; set; }
 
@@ -598,6 +628,7 @@ global inherited sharing class jam implements Callable {
         }
     }
 
+    @JsonAccess(Serializable = 'always' Deserializable = 'always')
     public inherited sharing class ExceptionDetails extends ErrorDetails {
         public Integer lineNumber { get; set; }
         public String stackTraceString { get; set; }
@@ -1941,9 +1972,14 @@ global inherited sharing class jam implements Callable {
                 throw new jam.ProcessException('No jam callable instance for namespace: ' + namespace);
             }
 
-            Object callResponseVar = callableInstance.call(action, dto);
+            Map<String, Object> callResponseVar = (Map<String, Object>) callableInstance.call(action, dto);
 
-            return (jam.Response) JSON.deserialize(JSON.serialize(callResponseVar), jam.Response.class);
+            return new jam.Response(
+                    (Boolean) callResponseVar.get('isValid'),
+                    (Map<String, Object>) callResponseVar.get('dto'),
+                    (jam.ErrorDetails)JSON.deserialize(JSON.serialize(callResponseVar.get('error')), jam.ErrorDetails.class),
+                    (List<jam.ErrorDetails>)JSON.deserialize(JSON.serialize(callResponseVar.get('errors')), List<jam.ErrorDetails>.class)
+            );
         }
 
         public jam.Action getAction(String actionName) {
