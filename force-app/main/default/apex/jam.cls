@@ -501,23 +501,6 @@ global inherited sharing class jam implements Callable {
             jam.objects.setMapValue(this.dto, path, value);
             return this;
         }
-
-        //DEPRECATED. Use .put instead
-        global DTO putSObject(String path, SObject sObj) {
-            if (sObj == null) {
-                return null;
-            }
-
-            Map<String, Object> dataMap = jam.sObjects.sObjectToMap(sObj, this.defaultFieldValue, this.isAllFields, this.isVisualforce);
-
-            jam.objects.setMapValue(
-                    this.dto,
-                    path,
-                    dataMap
-            );
-
-            return this;
-        }
     }
 
     public inherited sharing virtual class Response extends jam.DTO {
