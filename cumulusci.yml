@@ -47,6 +47,16 @@ flows:
         steps:
             4:
                 task: enable_debug_mode
+    merge_jam:
+        steps:
+            1:
+                task: dx_push
+                options:
+                    extra: -f
+            2:
+                task: dx_pull
+                options:
+                    extra: -f
 orgs:
     scratch:
         dev:

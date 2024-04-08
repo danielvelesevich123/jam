@@ -1,4 +1,4 @@
-global inherited sharing class jam implements Callable  {
+global inherited sharing class jam implements Callable {
 
     /*
     *   Callable Interface implementation allows for the execution of the Action from another package
@@ -1496,7 +1496,6 @@ global inherited sharing class jam implements Callable  {
                             .put(sObjName + '.' + fieldName + '.label', fieldDescribe.getLabel())
                             .put(sObjName + '.' + fieldName + '.helpText', fieldDescribe.getInlineHelpText())
                             .put(sObjName + '.' + fieldName + '.defaultValue', fieldDescribe.getDefaultValue())
-                            .put(sObjName + '.' + fieldName + '.type', fieldDescribe.getType())
                             .put(sObjName + '.' + fieldName + '.type', fieldDescribe.getType());
                 }
             }
