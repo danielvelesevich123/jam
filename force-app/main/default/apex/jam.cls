@@ -1960,7 +1960,7 @@ global inherited sharing class jam implements Callable {
             return new jam.Response(
                     (Boolean) callResponseVar.get('isValid'),
                     (Map<String, Object>) callResponseVar.get('dto'),
-                    (jam.ErrorDetails)JSON.deserialize(JSON.serialize(callResponseVar.get('error')), jam.ErrorDetails.class),
+                    callResponseVar.get('error') == null ? null : (jam.ErrorDetails)JSON.deserialize(JSON.serialize(callResponseVar.get('error')), jam.ErrorDetails.class),
                     (List<jam.ErrorDetails>)JSON.deserialize(JSON.serialize(callResponseVar.get('errors')), List<jam.ErrorDetails>.class)
             );
         }
