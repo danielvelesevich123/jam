@@ -60,7 +60,8 @@ global inherited sharing class jam implements Callable {
         protected DTO request;
         protected jam.Response response = new jam.Response(new Map<String, Object>());
 
-        public Action() {}
+        public Action() {
+        }
 
         public Action(Map<String, Object> requestMap) {
             this.request = this.initRequest(requestMap);
@@ -509,7 +510,10 @@ global inherited sharing class jam implements Callable {
         public List<jam.ErrorDetails> errors = new List<jam.ErrorDetails>();
 
         public Response(Map<String, Object> requestMap) {
-            super(requestMap);
+            this.isValid = (Boolean) requestMap.get('isValid');
+            this.dto = (Map<String, Object>) requestMap.get('dto');
+            this.error = (ErrorDetails) requestMap.get('error');
+            this.errors = (List<ErrorDetails>) requestMap.get('errors');
         }
 
         public Response(jam.DTO requestDTO) {
@@ -558,6 +562,12 @@ global inherited sharing class jam implements Callable {
                     'error' => this.error,
                     'errors' => this.errors
             };
+        }
+
+        public void throwIfInvalid() {
+            if(!this.isValid) {
+                throw new jam.ProcessException(this.errors[0].message);
+            }
         }
     }
 
@@ -1916,6 +1926,26 @@ global inherited sharing class jam implements Callable {
 
 
     public inherited sharing class ObjectExtensions {
+        public jam.Response runPackageAction(String namespace, String action, Map<String, Object> dto) {
+            jam.objects.throwIfBlank(namespace, 'Namespace is required for cross-package calling');
+
+            Type jamCallableType = Type.forName(namespace, 'jam');
+
+            if (jamCallableType == null) {
+                throw new jam.ProcessException('No jam type for namespace: ' + namespace);
+            }
+
+            Callable callableInstance = (Callable) jamCallableType.newInstance();
+
+            if (callableInstance == null) {
+                throw new jam.ProcessException('No jam callable instance for namespace: ' + namespace);
+            }
+
+            Object callResponseVar = callableInstance.call(action, dto);
+
+            return (jam.Response) JSON.deserialize(JSON.serialize(callResponseVar), jam.Response.class);
+        }
+
         public jam.Action getAction(String actionName) {
             return getAction(actionName, 'No Action with Name: ' + actionName);
         }
