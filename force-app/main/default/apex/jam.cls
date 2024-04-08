@@ -510,7 +510,7 @@ global inherited sharing class jam implements Callable {
         public List<jam.ErrorDetails> errors = new List<jam.ErrorDetails>();
 
         public Response() {
-            super((Map<String, Object>)null);
+            super((Map<String, Object>) null);
         }
 
 
@@ -577,7 +577,7 @@ global inherited sharing class jam implements Callable {
         }
 
         public void throwIfInvalid() {
-            if(!this.isValid) {
+            if (!this.isValid) {
                 throw new jam.ProcessException(this.errors.size() == 0 ? 'Unknown error' : this.errors[0].message);
             }
         }
@@ -611,7 +611,7 @@ global inherited sharing class jam implements Callable {
         }
     }
 
-    @JsonAccess(Serializable = 'always' Deserializable = 'always')
+    @JsonAccess(Serializable='always' Deserializable='always')
     public inherited sharing class ExceptionDetails extends ErrorDetails {
         public Integer lineNumber { get; set; }
         public String stackTraceString { get; set; }
@@ -1960,8 +1960,8 @@ global inherited sharing class jam implements Callable {
             return new jam.Response(
                     (Boolean) callResponseVar.get('isValid'),
                     (Map<String, Object>) callResponseVar.get('dto'),
-                    callResponseVar.get('error') == null ? null : (jam.ErrorDetails)JSON.deserialize(JSON.serialize(callResponseVar.get('error')), jam.ErrorDetails.class),
-                    (List<jam.ErrorDetails>)JSON.deserialize(JSON.serialize(callResponseVar.get('errors')), List<jam.ErrorDetails>.class)
+                    callResponseVar.get('error') == null ? null : (jam.ErrorDetails) JSON.deserialize(JSON.serialize(callResponseVar.get('error')), jam.ErrorDetails.class),
+                    (List<jam.ErrorDetails>) JSON.deserialize(JSON.serialize(callResponseVar.get('errors')), List<jam.ErrorDetails>.class)
             );
         }
 
