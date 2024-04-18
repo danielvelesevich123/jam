@@ -2382,4 +2382,464 @@ global inherited sharing class jam implements Callable {
         }
         private set;
     }
+
+    public static QueryFactory queryFactory(SObjectType sObjectType){
+        return new QueryFactory(sObjectType);
+    }
+    public inherited sharing class QueryFactory {
+
+
+        public Schema.SObjectType table { get; private set; }
+        @TestVisible
+        private Set<String> fields;
+        private String conditionExpression;
+        private Map<String, Object> bindVariablesMap;
+        private Integer limitCount;
+        private Integer offsetCount;
+        private List<Ordering> order;
+        private Boolean isSecurityEnforced = true;
+        private Boolean sortSelectFields = true;
+
+        private Schema.ChildRelationship relationship;
+        private Map<Schema.ChildRelationship, QueryFactory> subSelectQueryMap;
+        private Boolean isSubSelectFactory = false;
+
+        private String getFieldPath(String fieldName) {
+            if (!fieldName.contains('.')) {
+                Schema.SObjectField token = table.getDescribe().fields.getMap().get(fieldName.toLowerCase());
+                if (token == null) throw new InvalidFieldException(fieldName, this.table);
+                return token.getDescribe().getName();
+            }
+
+            List<String> fieldPath = new List<String>();
+            Schema.SObjectType lastSObjectType = table;
+            Iterator<String> i = fieldName.split('\\.').iterator();
+            while (i.hasNext()) {
+                String field = i.next();
+                Schema.SObjectField token = table.getDescribe().fields.getMap().get(fieldName.toLowerCase());
+                DescribeFieldResult tokenDescribe = token != null ? token.getDescribe() : null;
+
+                if (token != null && i.hasNext() && tokenDescribe.getSoapType() == Schema.SoapType.ID) {
+                    lastSObjectType = tokenDescribe.getReferenceTo()[0];
+                    fieldPath.add(tokenDescribe.getRelationshipName());
+                } else if (token != null && !i.hasNext()) {
+                    fieldPath.add(tokenDescribe.getName());
+                } else {
+                    if (token == null) {
+                        throw new InvalidFieldException(field, lastSObjectType);
+                    } else {
+                        throw new NonReferenceFieldException(lastSObjectType + '.' + field + ' is not a lookup or master-detail field but is used in a cross-object query field.');
+                    }
+                }
+            }
+
+            return String.join(fieldPath, '.');
+        }
+
+        @TestVisible
+        private String getFieldTokenPath(Schema.SObjectField field) {
+            if (field == null) {
+                throw new InvalidFieldException('Invalid field: null');
+            }
+            return field.getDescribe().getName();
+        }
+
+        public Boolean equals(Object obj) {
+            if (!(obj instanceof QueryFactory) || ((QueryFactory) obj).table != this.table || ((QueryFactory) obj).fields.size() != this.fields.size()) return false;
+            return ((QueryFactory) obj).toSOQL() == this.toSOQL();
+        }
+
+        public QueryFactory(Schema.SObjectType table) {
+            this.table = table;
+            fields = new Set<String>();
+            order = new List<Ordering>();
+        }
+
+        private QueryFactory(Schema.ChildRelationship relationship) {
+            this(relationship.getChildSObject());
+            this.relationship = relationship;
+        }
+
+        public QueryFactory setSecurityEnforced(Boolean isSecurityEnforced) {
+            this.isSecurityEnforced = isSecurityEnforced;
+            return this;
+        }
+
+        public QueryFactory setSortSelectFields(Boolean doSort) {
+            this.sortSelectFields = doSort;
+            return this;
+        }
+
+        public QueryFactory selectField(String fieldName) {
+            fields.add(getFieldPath(fieldName));
+            return this;
+        }
+
+        public QueryFactory selectField(Schema.SObjectField field) {
+            if (field == null) throw new InvalidFieldException(null, this.table);
+            fields.add(getFieldTokenPath(field));
+            return this;
+        }
+
+        public QueryFactory selectFields(Set<String> fieldNames) {
+            for (String fieldName : fieldNames) {
+                fields.add(getFieldPath(fieldName));
+            }
+            return this;
+        }
+
+        public QueryFactory selectFields(List<String> fieldNames) {
+            for (String fieldName : fieldNames) fields.add(getFieldPath(fieldName));
+            return this;
+        }
+
+        public QueryFactory selectFields(Set<Schema.SObjectField> fields) {
+            for (Schema.SObjectField token : fields) {
+                if (token == null) throw new InvalidFieldException();
+                this.fields.add(getFieldTokenPath(token));
+            }
+            return this;
+        }
+
+        public QueryFactory selectFields(List<Schema.SObjectField> fields) {
+            for (Schema.SObjectField token : fields) {
+                if (token == null) throw new InvalidFieldException();
+                this.fields.add(getFieldTokenPath(token));
+            }
+            return this;
+        }
+
+        public QueryFactory selectFieldSet(Schema.FieldSet fieldSet) {
+            return selectFieldSet(fieldSet, true);
+        }
+
+        public QueryFactory selectFieldSet(Schema.FieldSet fieldSet, Boolean allowCrossObject) {
+            if (fieldSet.getSObjectType() != table) throw new InvalidFieldSetException('Field set "' + fieldSet.getName() + '" is not for SObject type "' + table + '"');
+            for (Schema.FieldSetMember field : fieldSet.getFields()) {
+                if (!allowCrossObject && field.getFieldPath().contains('.')) throw new InvalidFieldSetException('Cross-object fields not allowed and field "' + field.getFieldPath() + '"" is a cross-object field.');
+                fields.add(getFieldPath(field.getFieldPath()));
+            }
+            return this;
+        }
+
+        public QueryFactory setCondition(String conditionExpression) {
+            this.conditionExpression = conditionExpression;
+            return this;
+        }
+
+        public QueryFactory setCondition(String conditionExpression, Map<String, Object> bindVariablesMap) {
+            this.setCondition(conditionExpression);
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public QueryFactory setBindVariables(Map<String, Object> bindVariablesMap) {
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public QueryFactory setConditionsAND(List<String> conditionExpressions) {
+            this.conditionExpression = String.join(conditionExpressions, ' AND ');
+            return this;
+        }
+
+        public QueryFactory setConditionsOR(List<String> conditionExpressions) {
+            this.conditionExpression = String.join(conditionExpressions, ' OR ');
+            return this;
+        }
+
+        public QueryFactory setConditionsAND(List<String> conditionExpressions, Map<String, Object> bindVariablesMap) {
+            this.setConditionsAND(conditionExpressions);
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public QueryFactory setConditionsOR(List<String> conditionExpressions, Map<String, Object> bindVariablesMap) {
+            this.setConditionsOR(conditionExpressions);
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public String getCondition() {
+            return this.conditionExpression;
+        }
+
+        public QueryFactory setLimit(Integer limitCount) {
+            this.limitCount = limitCount;
+            return this;
+        }
+
+        public Integer getLimit() {
+            return this.limitCount;
+        }
+
+        public QueryFactory setOffset(Integer offsetCount) {
+            this.offsetCount = offsetCount;
+            return this;
+        }
+
+        public Integer getOffset() {
+            return this.offsetCount;
+        }
+
+        public QueryFactory addOrdering(Ordering o) {
+            this.order.add(o);
+            return this;
+        }
+
+        public QueryFactory setOrdering(Ordering o) {
+            this.order = new List<Ordering>{
+                o
+            };
+            return this;
+        }
+
+        public List<Ordering> getOrderings() {
+            return this.order;
+        }
+
+        public Set<String> getSelectedFields() {
+            return this.fields;
+        }
+
+        public QueryFactory subSelectQuery(SObjectType related) {
+            return setSubSelectQuery(getChildRelationship(related));
+        }
+
+        public QueryFactory subSelectQuery(String relationshipName) {
+            ChildRelationship relationship = getChildRelationship(relationshipName);
+            if (relationship != null) {
+                return setSubSelectQuery(relationship);
+            }
+            throw new InvalidSubqueryRelationshipException('Invalid call to subselectQuery with relationshipName = ' + relationshipName + '.  Relationship does not exist for ' + table.getDescribe().getName());
+        }
+
+        public QueryFactory subSelectQuery(ChildRelationship relationship) {
+            return setSubSelectQuery(relationship);
+        }
+
+        private QueryFactory setSubSelectQuery(ChildRelationship relationship) {
+            if (this.relationship != null) {
+                throw new InvalidSubqueryRelationshipException('Invalid call to subselectQuery.  You may not add a subselect query to a subselect query.');
+            }
+            if (this.subSelectQueryMap == null) {
+                this.subSelectQueryMap = new Map<ChildRelationship, QueryFactory>();
+            }
+            if (this.subSelectQueryMap.containsKey(relationship)) {
+                return subSelectQueryMap.get(relationship);
+            }
+
+            QueryFactory subSelectQuery = new QueryFactory(relationship);
+            subSelectQuery.isSubSelectFactory = true;
+
+            subSelectQuery.setSortSelectFields(sortSelectFields);
+            subSelectQueryMap.put(relationship, subSelectQuery);
+            return subSelectQuery;
+        }
+
+        public List<QueryFactory> getSubSelectQueries() {
+            if (subSelectQueryMap != null) {
+                return subSelectQueryMap.values();
+            }
+            return null;
+        }
+
+        private Schema.ChildRelationship getChildRelationship(SObjectType objType) {
+            for (Schema.ChildRelationship childRow : table.getDescribe().getChildRelationships()) {
+                if (childRow.getChildSObject() == objType && childRow.getRelationshipName() != null) {
+                    return childRow;
+                }
+            }
+            throw new InvalidSubqueryRelationshipException('Invalid call to subselectQuery.  Invalid relationship for table ' + table + ' and objtype=' + objType);
+        }
+
+        private Schema.ChildRelationship getChildRelationship(String relationshipName) {
+            for (Schema.ChildRelationship childRow : table.getDescribe().getChildRelationships()) {
+                if (childRow.getRelationshipName() == relationshipName) {
+                    return childRow;
+                }
+            }
+            return null;
+        }
+
+        public QueryFactory addOrdering(String fieldName, SortOrder direction, Boolean nullsLast) {
+            order.add(
+                new Ordering(getFieldPath(fieldName), direction, nullsLast)
+            );
+            return this;
+        }
+
+        public QueryFactory addOrdering(SObjectField field, SortOrder direction, Boolean nullsLast) {
+            order.add(
+                new Ordering(getFieldTokenPath(field), direction, nullsLast)
+            );
+            return this;
+        }
+
+        public QueryFactory addOrdering(String fieldName, SortOrder direction) {
+            order.add(
+                new Ordering(getFieldPath(fieldName), direction)
+            );
+            return this;
+        }
+
+        public QueryFactory addOrdering(SObjectField field, SortOrder direction) {
+            order.add(
+                new Ordering(getFieldTokenPath(field), direction)
+            );
+            return this;
+        }
+
+        public QueryFactory setOrdering(String fieldName, SortOrder direction, Boolean nullsLast) {
+            Ordering ordr = new Ordering(getFieldPath(fieldName), direction, nullsLast);
+            return setOrdering(ordr);
+        }
+
+        public QueryFactory setOrdering(SObjectField field, SortOrder direction, Boolean nullsLast) {
+            Ordering ordr = new Ordering(getFieldTokenPath(field), direction, nullsLast);
+            return setOrdering(ordr);
+        }
+
+        public QueryFactory setOrdering(String fieldName, SortOrder direction) {
+            Ordering ordr = new Ordering(getFieldPath(fieldName), direction);
+            return setOrdering(ordr);
+        }
+
+        public QueryFactory setOrdering(SObjectField field, SortOrder direction) {
+            Ordering ordr = new Ordering(getFieldTokenPath(field), direction);
+            return setOrdering(ordr);
+        }
+
+        public String toSOQL() {
+            String result = 'SELECT ';
+
+            if (fields.size() == 0) {
+                result += 'Id';
+            } else {
+                List<String> fieldsToQuery = new List<String>(fields);
+
+                if (sortSelectFields) {
+                    fieldsToQuery.sort();
+                }
+
+                result += String.join(fieldsToQuery, ', ');
+            }
+
+            if (subSelectQueryMap != null && !subSelectQueryMap.isEmpty()) {
+                for (QueryFactory childRow : subSelectQueryMap.values()) {
+                    result += ', (' + childRow.toSOQL() + ') ';
+                }
+            }
+
+            result += ' FROM ' + (relationship != null ? relationship.getRelationshipName() : table.getDescribe().getName());
+            if (String.isNotBlank(conditionExpression)) result += ' WHERE ' + conditionExpression;
+
+            if (this.isSecurityEnforced && !this.isSubSelectFactory) {
+                result += ' WITH USER_MODE';
+            }
+
+            if (order.size() > 0) {
+                result += ' ORDER BY ';
+                for (Ordering o : order) result += o.toSOQL() + ', ';
+                result = result.substring(0, result.length() - 2);
+            }
+
+            if (limitCount != null) result += ' LIMIT ' + limitCount;
+
+            if (offsetCount != null) result += ' OFFSET ' + offsetCount;
+
+            return result;
+        }
+
+        public List<SObject> query() {
+            return (this.bindVariablesMap == null) ?
+                Database.query(this.toSOQL()) :
+                Database.queryWithBinds(
+                    this.toSOQL().remove('WITH USER_MODE'),
+                    this.bindVariablesMap,
+                    this.isSecurityEnforced ? AccessLevel.USER_MODE : AccessLevel.SYSTEM_MODE
+                );
+        }
+
+        public QueryFactory deepClone() {
+
+            QueryFactory clone = new QueryFactory(this.table)
+                .setLimit(this.limitCount)
+                .setOffset(this.offsetCount)
+                .setCondition(this.conditionExpression)
+                .setBindVariables(this.bindVariablesMap);
+
+            Map<Schema.ChildRelationship, QueryFactory> subqueries = this.subSelectQueryMap;
+            if (subqueries != null) {
+                Map<Schema.ChildRelationship, QueryFactory> clonedSubqueries = new Map<Schema.ChildRelationship, QueryFactory>();
+                for (Schema.ChildRelationship key : subqueries.keySet()) {
+                    clonedSubqueries.put(key, subqueries.get(key).deepClone());
+                }
+                clone.subSelectQueryMap = clonedSubqueries;
+            }
+
+            clone.relationship = this.relationship;
+            clone.order = this.order.clone();
+            clone.fields = this.fields.clone();
+
+            return clone;
+        }
+
+    }
+
+    public class Ordering {
+        private SortOrder direction;
+        private Boolean nullsLast;
+        private String field;
+
+        public Ordering(String sObjectTypeStr, String fieldName, SortOrder direction) {
+
+            this(
+                Schema.getGlobalDescribe().get(sObjectTypeStr.toLowerCase()).getDescribe().fields.getMap().get(fieldName),
+                direction
+            );
+        }
+
+        public Ordering(Schema.SObjectField field, SortOrder direction) {
+            this(field.getDescribe().getName(), direction, false);
+        }
+        public Ordering(Schema.SObjectField field, SortOrder direction, Boolean nullsLast) {
+            this(field.getDescribe().getName(), direction, nullsLast);
+        }
+        @TestVisible
+        private Ordering(String field, SortOrder direction) {
+            this(field, direction, false);
+        }
+        @TestVisible
+        private Ordering(String field, SortOrder direction, Boolean nullsLast) {
+            this.direction = direction;
+            this.field = field;
+            this.nullsLast = nullsLast;
+        }
+        public String getField() {
+            return this.field;
+        }
+        public SortOrder getDirection() {
+            return direction;
+        }
+        public String toSOQL() {
+            return field + ' ' + (direction == SortOrder.ASCENDING ? 'ASC' : 'DESC') + (nullsLast ? ' NULLS LAST ' : ' NULLS FIRST ');
+        }
+    }
+
+    public enum SortOrder {
+        ASCENDING, DESCENDING
+    }
+    public class InvalidFieldException extends Exception {
+        private String fieldName;
+        private Schema.SObjectType objectType;
+        public InvalidFieldException(String fieldName, Schema.SObjectType objectType) {
+            this.objectType = objectType;
+            this.fieldName = fieldName;
+            this.setMessage('Invalid field \'' + fieldName + '\' for object \'' + objectType + '\'');
+        }
+    }
+    public class InvalidFieldSetException extends Exception { }
+    public class NonReferenceFieldException extends Exception { }
+    public class InvalidSubqueryRelationshipException extends Exception { }
 }
