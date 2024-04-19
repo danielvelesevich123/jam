@@ -2488,31 +2488,6 @@ private class jamTest {
         insert assign;
     }
 
-    @IsTest
-    private static void testMock(){
-        new jamTest.HttpMock()
-                .add('POST', 'https://asdasd', 201, new Map<String, Object>{
-                        'test' => 123
-                })
-                .add('POST', 'https://asdasd', 201, 'xml response')
-                .add('GET', 'https://asdasd', 400, new Map<String, Object>{
-                        'test2' => 456
-                })
-                .add('https://asdasd', new Map<String, Object>{'test2' => 456})
-                .add('https://asdasd', 'some response')
-                .add('PUT', 'https://asdasd', 500, new Map<String, Object>{
-                        'test3' => 789
-                })
-                .setMock();
-
-//        Test.setMock(HttpCalloutMock.class, httpMockVar);
-
-
-//        new Map<String, String>{
-//            'POST|https://test.com' => '201|{"test": "test"}'
-//        });
-    }
-
     /*
     * Mocks the HTTP callout
     * Usage example
