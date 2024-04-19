@@ -623,8 +623,7 @@ private class jamTest {
         System.assertEquals('test', newContact.LastName);
 
         dtoVar.setIsVisualforce(true);
-        dtoVar.setIsAllFields(true);
-        dtoVar.setDefaultFieldValue('');
+        dtoVar.setDefaultFieldValue(' ');
         dtoVar.put('newContact', newContact);
         dtoVar.getSObject('newContact', newContact);
 
@@ -1802,7 +1801,7 @@ private class jamTest {
         });
         email.setPlainTextBody('See Spot run.');
 
-        jam.SObjectUnitOfWork uow = new jam.SObjectUnitOfWork(MY_SOBJECTS);
+        jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
 
         uow.m_emailWork = new Mock_SendEmailWork();
 
@@ -1827,7 +1826,7 @@ private class jamTest {
     @IsTest
     private static void testUnitOfWorkNewDirtyDelete() {
         {
-            jam.SObjectUnitOfWork uow = new jam.SObjectUnitOfWork(MY_SOBJECTS);
+            jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
             for (Integer o = 0; o < 10; o++) {
                 Opportunity opp = new Opportunity();
                 opp.Name = 'UoW Test Name ' + o;
@@ -1863,7 +1862,7 @@ private class jamTest {
         List<Opportunity> opps = [SELECT Id, Name, (SELECT Id FROM OpportunityLineItems) FROM Opportunity WHERE Name LIKE 'UoW Test Name %' ORDER BY Name];
 
         {
-            jam.SObjectUnitOfWork uow = new jam.SObjectUnitOfWork(MY_SOBJECTS);
+            jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
             Opportunity opp = opps[0];
             opp.Name = opp.Name + ' Changed';
             uow.registerDirty(new List<SObject>{
@@ -1912,7 +1911,7 @@ private class jamTest {
         System.assertEquals('UoW Test Name 0 Changed : New Product', opps[0].OpportunityLineItems[1].PricebookEntry.Product2.Name);
 
         {
-            jam.SObjectUnitOfWork uow = new jam.SObjectUnitOfWork(MY_SOBJECTS);
+            jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
             uow.registerDeleted(new List<SObject>{
                     opps[0].OpportunityLineItems[1].PricebookEntry.Product2
             });
@@ -2097,7 +2096,7 @@ private class jamTest {
         Opportunity opp = new Opportunity(Id = insertedOpp.Id, Name = 'Never');
         Opportunity opp2 = new Opportunity(Id = insertedOpp.Id, Name = 'Expected');
 
-        jam.SObjectUnitOfWork uow = new jam.SObjectUnitOfWork(MY_SOBJECTS);
+        jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
         uow.registerDirty(opp);
         uow.registerDirty(opp2);
         uow.commitWork();
@@ -2113,7 +2112,7 @@ private class jamTest {
 
         Opportunity nameUpdate = new Opportunity(Id = opp.Id, Name = 'UpdateName');
         Opportunity amountUpdate = new Opportunity(Id = opp.Id, Amount = 250);
-        jam.SObjectUnitOfWork uow = new jam.SObjectUnitOfWork(MY_SOBJECTS);
+        jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
         uow.registerDirty(nameUpdate);
         uow.registerDirty(amountUpdate, new List<SObjectField>{
                 Opportunity.Amount
@@ -2147,7 +2146,7 @@ private class jamTest {
         }
     }
 
-    private class DerivedUnitOfWork extends jam.SObjectUnitOfWork {
+    private class DerivedUnitOfWork extends jam.UnitOfWork {
         private List<String> m_commitWorkEventsFired = new List<String>();
         private Set<Schema.SObjectType> m_registeredTypes = new Set<Schema.SObjectType>();
 
@@ -2167,89 +2166,75 @@ private class jamTest {
             super(sObjectTypes, dml);
         }
 
-        private void addEvent(String event)
-        {
-            for (String eventName :m_commitWorkEventsFired)
-            {
-                if (event == eventName)
-                {
-                    throw new jam.ProcessException(String.format('Event {0} has already been fired.', new List<String> { event }));
+        private void addEvent(String event) {
+            for (String eventName : m_commitWorkEventsFired) {
+                if (event == eventName) {
+                    throw new jam.ProcessException(String.format('Event {0} has already been fired.', new List<String>{
+                            event
+                    }));
                 }
             }
             m_commitWorkEventsFired.add(event);
         }
 
-        public override void onRegisterType(Schema.SObjectType sObjectType)
-        {
-            if (m_registeredTypes.contains(sObjectType))
-            {
-                throw new jam.ProcessException(String.format('Type {0} has already been registered.', new List<String> { sObjectType.getDescribe().getName() }));
+        public override void onRegisterType(Schema.SObjectType sObjectType) {
+            if (m_registeredTypes.contains(sObjectType)) {
+                throw new jam.ProcessException(String.format('Type {0} has already been registered.', new List<String>{
+                        sObjectType.getDescribe().getName()
+                }));
             }
             m_registeredTypes.add(sObjectType);
         }
 
-        public override void onCommitWorkStarting()
-        {
+        public override void onCommitWorkStarting() {
             addEvent('onCommitWorkStarting');
         }
 
-        public override void onPublishBeforeEventsStarting()
-        {
+        public override void onPublishBeforeEventsStarting() {
             addEvent('onPublishBeforeEventsStarting');
         }
 
-        public override void onPublishBeforeEventsFinished()
-        {
+        public override void onPublishBeforeEventsFinished() {
             addEvent('onPublishBeforeEventsFinished');
         }
 
-        public override void onDMLStarting()
-        {
+        public override void onDMLStarting() {
             addEvent('onDMLStarting');
         }
 
-        public override void onDMLFinished()
-        {
+        public override void onDMLFinished() {
             addEvent('onDMLFinished');
         }
 
-        public override void onDoWorkStarting()
-        {
+        public override void onDoWorkStarting() {
             addEvent('onDoWorkStarting');
         }
 
-        public override void onDoWorkFinished()
-        {
+        public override void onDoWorkFinished() {
             addEvent('onDoWorkFinished');
         }
 
-        public override void onCommitWorkFinishing()
-        {
+        public override void onCommitWorkFinishing() {
             addEvent('onCommitWorkFinishing');
         }
 
-        public override void onPublishAfterSuccessEventsStarting()
-        {
+        public override void onPublishAfterSuccessEventsStarting() {
             addEvent('onPublishAfterSuccessEventsStarting');
         }
 
-        public override void onPublishAfterSuccessEventsFinished()
-        {
+        public override void onPublishAfterSuccessEventsFinished() {
             addEvent('onPublishAfterSuccessEventsFinished');
         }
 
-        public override void onPublishAfterFailureEventsStarting()
-        {
+        public override void onPublishAfterFailureEventsStarting() {
             addEvent('onPublishAfterFailureEventsStarting');
         }
 
-        public override void onPublishAfterFailureEventsFinished()
-        {
+        public override void onPublishAfterFailureEventsFinished() {
             addEvent('onPublishAfterFailureEventsFinished');
         }
 
-        public override void onCommitWorkFinished(Boolean wasSuccessful)
-        {
+        public override void onCommitWorkFinished(Boolean wasSuccessful) {
             addEvent('onCommitWorkFinished - ' + wasSuccessful);
         }
     }
@@ -2501,5 +2486,82 @@ private class jamTest {
 
         PermissionSetAssignment assign = new PermissionSetAssignment(AssigneeId = u.Id, PermissionSetId = ps.Id);
         insert assign;
+    }
+
+    @IsTest
+    private static void testMock(){
+        new jamTest.HttpMock()
+                .add('POST', 'https://asdasd', 201, new Map<String, Object>{
+                        'test' => 123
+                })
+                .add('POST', 'https://asdasd', 201, 'xml response')
+                .add('GET', 'https://asdasd', 400, new Map<String, Object>{
+                        'test2' => 456
+                })
+                .add('https://asdasd', new Map<String, Object>{'test2' => 456})
+                .add('https://asdasd', 'some response')
+                .add('PUT', 'https://asdasd', 500, new Map<String, Object>{
+                        'test3' => 789
+                })
+                .setMock();
+
+//        Test.setMock(HttpCalloutMock.class, httpMockVar);
+
+
+//        new Map<String, String>{
+//            'POST|https://test.com' => '201|{"test": "test"}'
+//        });
+    }
+
+    /*
+    * Mocks the HTTP callout
+    * Usage example
+    * new jamTest.HttpMock()
+    * .add('GET', 'https://test.com', 200, new Map<String, Object>{'test': 'test'})
+    * .add('GET', 'https://test.com', 200, 'test response')
+    * .add('https://test.com', new Map<String, Object>{'test': 'test'})
+    * .add('https://test.com', 'test response')
+    * .setMock();
+     */
+    public class HttpMock implements HttpCalloutMock {
+
+        private final Map<String, String> endpointResponseMap = new Map<String, String>();
+
+        public HttpResponse respond(HttpRequest req) {
+            String endpoint = req.getEndpoint();
+            String method = req.getMethod();
+
+            String mockData = endpointResponseMap.get(method + '|' + endpoint);
+            jam.objects.throwIfBlank(mockData, 'No Mock endpoint: ' + req.getEndpoint());
+            List<String> mockParts = mockData.split('|');
+
+            HttpResponse res = new HttpResponse();
+            res.setHeader('Content-Type', 'application/json');
+            res.setStatusCode(Integer.valueOf(mockParts[0]));
+            res.setBody(mockParts[1]);
+            return res;
+        }
+
+        public HttpMock add(String method, String endpoint, Integer code, String response) {
+            endpointResponseMap.put(method + '|' + endpoint, code + '|' + response);
+            return this;
+        }
+
+        public HttpMock add(String method, String endpoint, Integer code, Map<String, Object> responseMap) {
+            return add(method, endpoint, code, JSON.serialize(responseMap));
+        }
+
+        public HttpMock add(String endpoint, Map<String, Object> responseMap) {
+            return add('GET', endpoint, 200, responseMap);
+        }
+
+        public HttpMock add(String endpoint, String response) {
+            return add('GET', endpoint, 200, response);
+        }
+
+        private HttpMock setMock() {
+            Test.setMock(HttpCalloutMock.class, this);
+            return this;
+        }
     }
 }

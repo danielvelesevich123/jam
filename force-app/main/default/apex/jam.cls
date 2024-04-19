@@ -528,8 +528,8 @@ global inherited sharing class jam implements Callable {
             this.errors = errors;
         }
 
-        public Response(jam.DTO requestDTO) {
-            super(requestDTO.dto);
+        public Response(jam.DTO responseDTO) {
+            super(responseDTO.dto);
         }
 
         public Response(Exception ex) {
@@ -2207,10 +2207,29 @@ global inherited sharing class jam implements Callable {
         }
     }
 
+    private static Map<String, jam.Response> PACKAGE_ACTION_MOCK;
+
+    public static void setPackageActionMock(String namespace, String action, Map<String, Object> responseMap) {
+        setPackageActionMock(namespace, action, new jam.Response(new jam.DTO(responseMap)));
+    }
+
+    public static void setPackageActionMock(String namespace, String action, jam.Response response) {
+        if (PACKAGE_ACTION_MOCK == null) {
+            PACKAGE_ACTION_MOCK = new Map<String, jam.Response>();
+        }
+        PACKAGE_ACTION_MOCK.put(namespace + '.' + action, response);
+    }
+
 
     public inherited sharing class ObjectExtensions {
         public jam.Response runPackageAction(String namespace, String action, Map<String, Object> dto) {
             jam.objects.throwIfBlank(namespace, 'Namespace is required for cross-package calling');
+
+            if (Test.isRunningTest()) {
+                jam.Response mockResponse = PACKAGE_ACTION_MOCK?.get(namespace + '.' + action);
+                jam.objects.throwIfNull(mockResponse, 'No mock response for namespace: ' + namespace + '. Please set Mock.');
+                return mockResponse;
+            }
 
             Type jamCallableType = Type.forName(namespace, 'jam');
 
@@ -3007,7 +3026,7 @@ global inherited sharing class jam implements Callable {
     private class DoHierarchyWork implements jam.IDoWork {
         IDML dmlImpl;
 
-        public DoHierarchyWork(SObjectUnitOfWork uow) {
+        public DoHierarchyWork(UnitOfWork uow) {
             this.dmlImpl = uow.getDmlImpl();
             uow.registerWork(this);
         }
@@ -3128,7 +3147,7 @@ global inherited sharing class jam implements Callable {
         }
     }
 
-    public virtual class SObjectUnitOfWork {
+    public virtual class UnitOfWork {
         protected List<Schema.SObjectType> m_sObjectTypes = new List<Schema.SObjectType>();
 
         protected Map<String, List<SObject>> m_newListByType = new Map<String, List<SObject>>();
@@ -3152,11 +3171,11 @@ global inherited sharing class jam implements Callable {
 
         private DoHierarchyWork doHierarchyWork;
 
-        public SObjectUnitOfWork(List<Schema.SObjectType> sObjectTypes) {
+        public UnitOfWork(List<Schema.SObjectType> sObjectTypes) {
             this(sObjectTypes, new DMLAsUserImpl());
         }
 
-        public SObjectUnitOfWork(List<Schema.SObjectType> sObjectTypes, IDML dml) {
+        public UnitOfWork(List<Schema.SObjectType> sObjectTypes, IDML dml) {
             this.m_sObjectTypes = sObjectTypes.clone();
 
             for (Schema.SObjectType sObjectType : this.m_sObjectTypes) {
@@ -3222,29 +3241,29 @@ global inherited sharing class jam implements Callable {
             onRegisterType(sObjectType);
         }
 
-        public SObjectUnitOfWork registerWork(IDoWork work) {
+        public UnitOfWork registerWork(IDoWork work) {
             m_workList.add(work);
             return this;
         }
 
-        public SObjectUnitOfWork registerEmail(Messaging.Email email) {
+        public UnitOfWork registerEmail(Messaging.Email email) {
             m_emailWork.registerEmail(email);
             return this;
         }
 
-        public SObjectUnitOfWork registerNew(SObject record) {
+        public UnitOfWork registerNew(SObject record) {
             registerNew(record, null, null);
             return this;
         }
 
-        public SObjectUnitOfWork registerNew(List<SObject> records) {
+        public UnitOfWork registerNew(List<SObject> records) {
             for (SObject record : records) {
                 registerNew(record, null, null);
             }
             return this;
         }
 
-        public SObjectUnitOfWork registerNew(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
+        public UnitOfWork registerNew(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
             if (record.Id != null) {
                 throw new jam.ProcessException('Only new records can be registered as new');
             }
@@ -3270,7 +3289,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerUpsert(SObject record) {
+        public UnitOfWork registerUpsert(SObject record) {
             if(record.Id == null) {
                 this.registerNew(record);
             } else {
@@ -3280,7 +3299,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerUpsert(List<SObject> records) {
+        public UnitOfWork registerUpsert(List<SObject> records) {
             for (SObject record : records) {
                 this.registerUpsert(record);
             }
@@ -3288,7 +3307,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerRelationship(List<SObject> records, Schema.SObjectField relatedToField, SObject relatedTo) {
+        public UnitOfWork registerRelationship(List<SObject> records, Schema.SObjectField relatedToField, SObject relatedTo) {
             for (SObject record : records) {
                 this.registerRelationship(record, relatedToField, relatedTo);
             }
@@ -3296,7 +3315,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerRelationship(SObject record, Schema.SObjectField relatedToField, SObject relatedTo) {
+        public UnitOfWork registerRelationship(SObject record, Schema.SObjectField relatedToField, SObject relatedTo) {
             String sObjectType = record.getSObjectType().getDescribe().getName();
 
             if (sObjectType.length() > 3 && sObjectType.right(3) == '__e') {
@@ -3316,17 +3335,17 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerRelationship(Messaging.SingleEmailMessage email, SObject relatedTo) {
+        public UnitOfWork registerRelationship(Messaging.SingleEmailMessage email, SObject relatedTo) {
             m_relationships.get(Messaging.SingleEmailMessage.class.getName()).add(email, relatedTo);
             return this;
         }
 
-        public SObjectUnitOfWork registerDirty(SObject record) {
+        public UnitOfWork registerDirty(SObject record) {
             registerDirty(record, new List<SObjectField>());
             return this;
         }
 
-        public SObjectUnitOfWork registerDirty(SObject record, List<SObjectField> dirtyFields) {
+        public UnitOfWork registerDirty(SObject record, List<SObjectField> dirtyFields) {
             if (record.Id == null) {
                 throw new jam.ProcessException('New records cannot be registered as dirty');
             }
@@ -3360,7 +3379,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerDirty(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
+        public UnitOfWork registerDirty(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
             if (record.Id == null) {
                 throw new jam.ProcessException('New records cannot be registered as dirty');
             }
@@ -3386,7 +3405,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerDirty(List<SObject> records) {
+        public UnitOfWork registerDirty(List<SObject> records) {
             for (SObject record : records) {
                 this.registerDirty(record);
             }
@@ -3394,7 +3413,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerDeleted(SObject record) {
+        public UnitOfWork registerDeleted(SObject record) {
             if (record.Id == null) {
                 throw new jam.ProcessException('New records cannot be registered for deletion');
             }
@@ -3417,7 +3436,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerDeleted(List<SObject> records) {
+        public UnitOfWork registerDeleted(List<SObject> records) {
             for (SObject record : records) {
                 this.registerDeleted(record);
             }
@@ -3425,7 +3444,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerHierarchy(SObject child, SObjectField field, SObject parent) {
+        public UnitOfWork registerHierarchy(SObject child, SObjectField field, SObject parent) {
             if (child.getSObjectType() == parent.getSObjectType()) {
                 doHierarchyWork.registerRelationship(child, field, parent);
             } else {
@@ -3435,7 +3454,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerPublishBeforeTransaction(SObject record) {
+        public UnitOfWork registerPublishBeforeTransaction(SObject record) {
             String sObjectType = record.getSObjectType().getDescribe().getName();
 
             if (sObjectType.length() > 3 && sObjectType.right(3) != '__e') {
@@ -3455,7 +3474,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerPublishBeforeTransaction(List<SObject> records) {
+        public UnitOfWork registerPublishBeforeTransaction(List<SObject> records) {
             for (SObject record : records) {
                 this.registerPublishBeforeTransaction(record);
             }
@@ -3463,7 +3482,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerPublishAfterSuccessTransaction(SObject record) {
+        public UnitOfWork registerPublishAfterSuccessTransaction(SObject record) {
             String sObjectType = record.getSObjectType().getDescribe().getName();
 
             if (sObjectType.length() > 3 && sObjectType.right(3) != '__e') {
@@ -3483,7 +3502,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerPublishAfterSuccessTransaction(List<SObject> records) {
+        public UnitOfWork registerPublishAfterSuccessTransaction(List<SObject> records) {
             for (SObject record : records) {
                 this.registerPublishAfterSuccessTransaction(record);
             }
@@ -3491,7 +3510,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerPublishAfterFailureTransaction(SObject record) {
+        public UnitOfWork registerPublishAfterFailureTransaction(SObject record) {
             String sObjectType = record.getSObjectType().getDescribe().getName();
 
             if (sObjectType.length() > 3 && sObjectType.right(3) != '__e') {
@@ -3511,7 +3530,7 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        public SObjectUnitOfWork registerPublishAfterFailureTransaction(List<SObject> records) {
+        public UnitOfWork registerPublishAfterFailureTransaction(List<SObject> records) {
             for (SObject record : records) {
                 this.registerPublishAfterFailureTransaction(record);
             }
