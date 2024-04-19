@@ -1163,6 +1163,10 @@ global inherited sharing class jam implements Callable {
         }
     }
 
+    public enum Operation {
+        OP_INSERT, OP_UPDATE, OP_DELETE, OP_UPSERT
+    }
+
     public inherited sharing class SObjectExtensions {
 
         public void assertReadable(List<SObject> records) {
@@ -1436,24 +1440,24 @@ global inherited sharing class jam implements Callable {
         }
 
         public void restoreNotBlankValues(List<SObject> records, Set<SObjectField> fields) {
-//            if(records != null && records.isEmpty() == false && fields != null && fields.isEmpty() == false){
-//                SObjectType sObjectTypeVar = records.get(0).getSObjectType();
-//                fflib_QueryFactory queryFactory = new fflib_QueryFactory(sObjectTypeVar);
-//                queryFactory.selectField('Id');
-//                queryFactory.selectFields(fields);
-//                queryFactory.setCondition('Id IN :records');
-//                List<SObject> sourceRecords = Database.query(queryFactory.toSOQL());
-//                Map<Id, SObject> sourceRecordsMap = new Map<Id, SObject>(sourceRecords);
-//                for (SObject recordVar : records) {
-//                    SObject sourceRecordVar = sourceRecordsMap.get(recordVar.Id);
-//                    for (SObjectField preserveField : fields) {
-//                        Object sourceValue = sourceRecordVar.get(preserveField);
-//                        if(sourceValue != null){
-//                            recordVar.put(preserveField, sourceValue);
-//                        }
-//                    }
-//                }
-//            }
+            if (records != null && records.isEmpty() == false && fields != null && fields.isEmpty() == false) {
+                SObjectType sObjectTypeVar = records.get(0).getSObjectType();
+                jam.QueryFactory queryFactory = new jam.QueryFactory(sObjectTypeVar);
+                queryFactory.selectField('Id');
+                queryFactory.selectFields(fields);
+                queryFactory.setCondition('Id IN :records');
+                List<SObject> sourceRecords = Database.query(queryFactory.toSOQL());
+                Map<Id, SObject> sourceRecordsMap = new Map<Id, SObject>(sourceRecords);
+                for (SObject recordVar : records) {
+                    SObject sourceRecordVar = sourceRecordsMap.get(recordVar.Id);
+                    for (SObjectField preserveField : fields) {
+                        Object sourceValue = sourceRecordVar.get(preserveField);
+                        if (sourceValue != null) {
+                            recordVar.put(preserveField, sourceValue);
+                        }
+                    }
+                }
+            }
         }
 
         public Boolean deduplicate(SObject recordVar) {
@@ -1686,6 +1690,271 @@ global inherited sharing class jam implements Callable {
             }
 
             return sObj;
+        }
+
+        // CRUD/FLS-safe DML operations. These honor the CRUD and FLS permissions of the running user
+        public void insertAsUser(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            performDMLOperation(new List<SObject>{ // Bulkify Apex False Positive: there is an overridden Bulk method below used by this method.
+                    obj
+            }, Operation.OP_INSERT);
+        }
+        public void updateAsUser(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            performDMLOperation(new List<SObject>{ // Bulkify Apex False Positive: there is an overridden Bulk method below used by this method.
+                    obj
+            }, Operation.OP_UPDATE);
+        }
+        public void upsertAsUser(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            performDMLOperation(new List<SObject>{ // Bulkify Apex False Positive: there is an overridden Bulk method below used by this method.
+                    obj
+            }, Operation.OP_UPSERT);
+        }
+        public void deleteAsUser(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            performDMLOperation(new List<SObject>{ // Bulkify Apex False Positive: there is an overridden Bulk method below used by this method.
+                    obj
+            }, Operation.OP_DELETE);
+        }
+
+        public void insertAsUser(List<SObject> objList) {
+            performDMLOperation(objList, Operation.OP_INSERT);
+        }
+        public void updateAsUser(List<SObject> objList) {
+            performDMLOperation(objList, Operation.OP_UPDATE);
+        }
+        public void upsertAsUser(List<SObject> objList) {
+            performDMLOperation(objList, Operation.OP_UPSERT);
+        }
+        public void deleteAsUser(List<SObject> objList) {
+            performDMLOperation(objList, Operation.OP_DELETE);
+        }
+
+        // Pass-thru methods to raw DML operations.
+        // Use these sparingly, and only with good reason, since the DML operations are not CRUD/FLS safe
+        public void insertAsSystem(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            insert obj; // CRUD/FLS False Positive: system method should insert with no CRUD check as a system user.
+        }
+        public void updateAsSystem(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            update obj; // CRUD/FLS False Positive: system method should update with no CRUD check as a system user.
+        }
+        public void upsertAsSystem(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            upsert obj; // CRUD/FLS False Positive: system method should upsert with no CRUD check as a system user.
+        }
+        public void deleteAsSystem(SObject obj) { // Bulkify Apex False Positive: no need to bulkify. There is separate method below.
+            delete obj; // CRUD/FLS False Positive: system method should delete with no CRUD check as a system user.
+        }
+        public void insertAsSystem(List<SObject> objList) {
+            insert objList; // CRUD/FLS False Positive: system method should insert with no CRUD check as a system user.
+        }
+        public void updateAsSystem(List<SObject> objList) {
+            update objList; // CRUD/FLS False Positive: system method should update with no CRUD check as a system user.
+        }
+        public void upsertAsSystem(List<SObject> objList) {
+            upsert objList; // CRUD/FLS False Positive: system method should upsert with no CRUD check as a system user.
+        }
+        public void deleteAsSystem(List<SObject> objList) {
+            delete objList; // CRUD/FLS False Positive: system method should delete with no CRUD check as a system user.
+        }
+
+        // Items in the following set must be entered in lower case
+        private Set<String> exceptionValues = new Set<String>{
+                'id', 'isdeleted', 'createddate', 'systemmodstamp', 'lastmodifiedbyid', 'createdbyid', 'lastmodifieddate'
+        };
+
+        private Map<Operation, Map<SObjectType, List<String>>> cachedRestrictedFields = new Map<Operation, Map<SObjectType, List<String>>>();
+
+        private void performDMLOperation(List<SObject> objList, Operation dmlOperation) {
+            Map<SObjectType, List<Id>> objTypeMap = analyzeDMLCollection(objList, dmlOperation);
+
+            checkCRUDPermission(objTypeMap.keySet(), dmlOperation);
+
+            if (dmlOperation == Operation.OP_INSERT) {
+                for (SObject obj : objList) {
+                    checkCreateAction(obj);
+                }
+            } else if (dmlOperation == Operation.OP_UPDATE || dmlOperation == Operation.OP_UPSERT) {
+
+                Map<Id, SObject> existingRecords = getExistingRecords(objTypeMap);
+
+                for (SObject obj : objList) {
+                    SObject existingRecord = existingRecords.get(obj.Id);
+                    if (obj.Id != null) {
+                        checkUpdateAction(obj, existingRecord);
+                    } else {
+                        checkCreateAction(obj);
+                    }
+                }
+            }
+
+            // If no errors have been thrown to this point, execute the dml operation.
+            if (dmlOperation == Operation.OP_INSERT) {
+                insert objList;
+            } else if (dmlOperation == Operation.OP_UPDATE) {
+                update objList;
+            } else if (dmlOperation == Operation.OP_UPSERT) {
+                upsertCollection(objList);
+            } else if (dmlOperation == Operation.OP_DELETE) {
+                delete objList;
+            }
+        }
+
+        private void upsertCollection(List<SObject> objList) {
+            // This is to deal with a call to upsertAsUser with a singular object.
+            // Since we wrap that into a List<SObject> (which can't be passed into an upsert)
+            // we unpack it and upsert the object individually.
+            if (objList.size() == 1) {
+                upsert objList.get(0);
+            } else {
+                upsert objList;
+            }
+        }
+
+        private Map<String, Object> getFieldMapFromExistingSObject(SObject obj) {
+            // Get actual fields present in object.  The getPopulatedFieldsAsMap method removes implicit nulls.
+            return obj.getPopulatedFieldsAsMap();
+        }
+
+        private void checkCreateAction(SObject obj) {
+            List<String> restrictedFields = cachedRestrictedFields.get(Operation.OP_INSERT).get(obj.getSObjectType());
+            //Save ourselves a trip through the loop below if there are no restricted fields
+            if (restrictedFields == null || restrictedFields.isEmpty()) {
+                return;
+            }
+
+            Map<String, Object> fieldsMap = getFieldMapFromExistingSObject(obj);
+
+            // If any restricted fields are present, throw an exception
+            for (String fieldName : restrictedFields) {
+                if (fieldsMap.get(fieldName) != null) {
+                    throw new jam.ProcessException(
+                            'Access Denied: ' + Operation.OP_INSERT + ' on ' + obj.getSObjectType() + '.' + obj.getSObjectType().getDescribe().fields.getMap().get(fieldName)
+                    );// if any of the restricted fields are present in the candidate, throw an exception
+                }
+            }
+        }
+
+        private void checkUpdateAction(SObject obj, SObject existingRecord) {
+            List<String> restrictedFields = cachedRestrictedFields.get(Operation.OP_UPDATE).get(obj.getSObjectType());
+            //Save ourselves a trip through the loop below if there are no restricted fields
+            if (restrictedFields == null || restrictedFields.isEmpty()) {
+                return;
+            }
+
+            if (existingRecord == null) {
+                throw new jam.ProcessException('DML ERROR:  An existing record could not be found for object with Id = ' + obj.Id);
+            }
+
+            Map<String, Object> fieldsMap = getFieldMapFromExistingSObject(obj);
+
+            // If any of the restricted values are present and have changed in the dml candidate object, throw an exception
+            for (String fieldName : restrictedFields) {
+                if (fieldsMap.get(fieldName) != null && fieldsMap.get(fieldName) != existingRecord.get(fieldName)) {
+                    throw new jam.ProcessException(
+                            'Access Denied: ' + Operation.OP_INSERT + ' on ' + obj.getSObjectType() + '.' + obj.getSObjectType().getDescribe().fields.getMap().get(fieldName)
+                    );// if any of the restricted fields are present in the candidate, throw an exception
+                }
+            }
+        }
+
+
+        // For update and upsert operations, retrieve a Map of all existing records, for each object that has an ID.
+        // objects without an Id are skipped, because there is no existing record in the database.
+        private Map<Id, SObject> getExistingRecords(Map<SObjectType, List<Id>> objTypeMap) {
+            Map<Id, SObject> result = new Map<Id, SObject>();
+
+            Map<SObjectType, List<String>> operationRestrictedFields = cachedRestrictedFields.get(Operation.OP_UPDATE);
+
+            for (SObjectType objType : objTypeMap.keySet()) {
+                List<String> restrictedFields = operationRestrictedFields.get(objType);
+
+                if (restrictedFields == null || restrictedFields.isEmpty()) {
+                    continue;
+                }
+
+                List<Id> seenIds = objTypeMap.get(objType);
+                if (seenIds.isEmpty()) {
+                    continue;
+                }
+
+                String fieldList = String.join(restrictedFields, ',');
+                //?
+                result.putAll((Database.query('SELECT ' + fieldList + ' FROM ' + objType.getDescribe().getName() + ' WHERE Id IN :seenIds')));
+            }
+
+            return result;
+        }
+
+        // Check CRUD permissions for the current user on the object
+        private void checkCRUDPermission(Set<SObjectType> objTypeList, Operation dmlOperation) {
+            for (SObjectType objType : objTypeList) {
+                DescribeSObjectResult describeObject = objType.getDescribe();
+                if ((dmlOperation == Operation.OP_INSERT && !describeObject.isCreateable()) ||
+                        (dmlOperation == Operation.OP_UPDATE && !describeObject.isUpdateable()) ||
+                        (dmlOperation == Operation.OP_DELETE && !describeObject.isDeletable()) ||
+                        (dmlOperation == Operation.OP_UPSERT && !(describeObject.isCreateable() && describeObject.isUpdateable()))) {
+                    throw new jam.ProcessException('Access Denied: ' + dmlOperation + ' on ' + objType);
+                }
+            }
+        }
+
+        // Get a Map of all the object types in the dml request and the list of fields for each
+        // that the current user cannot update, based on FLS security settings
+        private Map<SObjectType, List<Id>> analyzeDMLCollection(List<SObject> objList, Operation dmlOperation) {
+            Map<SObjectType, List<Id>> result = new Map<SObjectType, List<Id>>();
+
+            for (SObject obj : objList) {
+                ensureRestrictedFieldsEntry(obj, dmlOperation);
+
+                List<Id> seenIds = result.get(obj.getSObjectType());
+                if (seenIds == null) {
+                    seenIds = new List<Id>();
+                    result.put(obj.getSObjectType(), seenIds);
+                }
+
+                if (obj.Id == null) {
+                    continue;
+                }
+
+                seenIds.add(obj.Id);
+
+            }
+            return result;
+        }
+
+        private void ensureRestrictedFieldsEntry(SObject obj, Operation dmlOperation) {
+            if (dmlOperation == Operation.OP_UPSERT) {
+                ensureRestrictedFields(obj, Operation.OP_INSERT);
+                ensureRestrictedFields(obj, Operation.OP_UPDATE);
+            } else {
+                ensureRestrictedFields(obj, dmlOperation);
+            }
+        }
+
+        private void ensureRestrictedFields(SObject obj, Operation dmlOperation) {
+            Map<SObjectType, List<String>> operationRestrictedFields = cachedRestrictedFields.get(dmlOperation);
+            if (operationRestrictedFields == null) {
+                operationRestrictedFields = new Map<SObjectType, List<String>>();
+                cachedRestrictedFields.put(dmlOperation, operationRestrictedFields);
+            }
+
+            if (!operationRestrictedFields.containsKey(obj.getSObjectType())) {
+
+                DescribeSObjectResult describeObject = obj.getSObjectType().getDescribe();
+
+                Map<String, Schema.SObjectField> objectFields = describeObject.fields.getMap();
+
+                List<String> restrictedFields = new List<String>();
+
+                for (String nm : objectFields.keySet()) {
+                    if (!exceptionValues.contains(nm.toLowerCase())) {
+                        DescribeFieldResult fr = objectFields.get(nm).getDescribe();
+                        if ((!fr.isCalculated()) && ((dmlOperation == Operation.OP_INSERT && !fr.isCreateable()) ||
+                                (dmlOperation == Operation.OP_UPDATE && !fr.isUpdateable()))
+                        ) {
+                            restrictedFields.add(fr.getName());
+                        }  // there is not an isDeletable method at the field level
+                    }
+                }
+                operationRestrictedFields.put(obj.getSObjectType(), restrictedFields);
+            }
         }
     }
 
@@ -2227,14 +2496,1102 @@ global inherited sharing class jam implements Callable {
         return lstOut;
     }
 
-    public inherited sharing class MissingDataException extends Exception {
+    //EXCEPTIONS
+    global inherited sharing class MissingDataException extends Exception {
     }
-    public inherited sharing class ValidationException extends Exception {
+    global inherited sharing class ValidationException extends Exception {
     }
-    public inherited sharing class ProcessException extends Exception {
+    global inherited sharing class ProcessException extends Exception {
     }
 
-    //UTILS ALIASES
+    //QUERY FACTORY
+    public static QueryFactory queryFactory(SObjectType sObjectType) {
+        return new QueryFactory(sObjectType);
+    }
+
+    @TestVisible
+    private static String getFieldTokenPath(Schema.SObjectField field) {
+        if (field == null) {
+            throw new jam.ProcessException('Invalid field: null');
+        }
+        return field.getDescribe().getName();
+    }
+
+    public inherited sharing class QueryFactory {
+
+        public Schema.SObjectType table { get; private set; }
+        @TestVisible
+        private Set<String> fields;
+        private String conditionExpression;
+        private Map<String, Object> bindVariablesMap;
+        private Integer limitCount;
+        private Integer offsetCount;
+        private List<Ordering> order;
+        private Boolean isSecurityEnforced = true;
+        private Boolean sortSelectFields = true;
+        private Schema.ChildRelationship relationship;
+        private Map<Schema.ChildRelationship, QueryFactory> subSelectQueryMap;
+        private Boolean isSubSelectFactory = false;
+
+        private String getFieldPath(String fieldName) {
+            if (!fieldName.contains('.')) {
+                Schema.SObjectField token = table.getDescribe().fields.getMap().get(fieldName.toLowerCase());
+                if (token == null) throw new jam.ProcessException('Invalid field \'' + fieldName + '\' for object \'' + table + '\'');
+                return token.getDescribe().getName();
+            }
+
+            List<String> fieldPath = new List<String>();
+            Schema.SObjectType lastSObjectType = table;
+            Iterator<String> i = fieldName.split('\\.').iterator();
+            while (i.hasNext()) {
+                String field = i.next();
+
+                Schema.SObjectField token = lastSObjectType.getDescribe().fields.getMap().get(field.endsWithIgnoreCase('__r') ?
+                        (field.removeEndIgnoreCase('__r') + '__c') :
+                        field);
+
+                if(token == null) {
+                    token = lastSObjectType.getDescribe().fields.getMap().get(field + 'id');
+                }
+
+                DescribeFieldResult tokenDescribe = token != null ? token.getDescribe() : null;
+
+                if (token != null && i.hasNext() && tokenDescribe.getSoapType() == Schema.SoapType.ID) {
+                    lastSObjectType = tokenDescribe.getReferenceTo()[0];
+                    fieldPath.add(tokenDescribe.getRelationshipName());
+                } else if (token != null && !i.hasNext()) {
+                    fieldPath.add(tokenDescribe.getName());
+                } else {
+                    if (token == null) {
+                        throw new jam.ProcessException('Invalid field \'' + field + '\' for object \'' + lastSObjectType + '\'');
+                    } else {
+                        throw new jam.ProcessException(lastSObjectType + '.' + field + ' is not a lookup or master-detail field but is used in a cross-object query field.');
+                    }
+                }
+            }
+
+            return String.join(fieldPath, '.');
+        }
+
+        public Boolean equals(Object obj) {
+            if (!(obj instanceof QueryFactory) || ((QueryFactory) obj).table != this.table || ((QueryFactory) obj).fields.size() != this.fields.size()) return false;
+            return ((QueryFactory) obj).toSOQL() == this.toSOQL();
+        }
+
+        public QueryFactory(Schema.SObjectType table) {
+            this.table = table;
+            fields = new Set<String>();
+            order = new List<Ordering>();
+        }
+
+        private QueryFactory(Schema.ChildRelationship relationship) {
+            this(relationship.getChildSObject());
+            this.relationship = relationship;
+        }
+
+        public QueryFactory setSecurityEnforced(Boolean isSecurityEnforced) {
+            this.isSecurityEnforced = isSecurityEnforced;
+            return this;
+        }
+
+        public QueryFactory setSortSelectFields(Boolean doSort) {
+            this.sortSelectFields = doSort;
+            return this;
+        }
+
+        public QueryFactory selectField(String fieldName) {
+            fields.add(getFieldPath(fieldName));
+            return this;
+        }
+
+        public QueryFactory selectField(Schema.SObjectField field) {
+            if (field == null) throw new jam.ProcessException('Invalid field \'' + null + '\' for object \'' + table + '\'');
+            fields.add(getFieldTokenPath(field));
+            return this;
+        }
+
+        public QueryFactory selectFields(Set<String> fieldNames) {
+            for (String fieldName : fieldNames) {
+                fields.add(getFieldPath(fieldName));
+            }
+            return this;
+        }
+
+        public QueryFactory selectFields(List<String> fieldNames) {
+            for (String fieldName : fieldNames) fields.add(getFieldPath(fieldName));
+            return this;
+        }
+
+        public QueryFactory selectFields(Set<Schema.SObjectField> fields) {
+            for (Schema.SObjectField token : fields) {
+                if (token == null) throw new jam.ProcessException();
+                this.fields.add(getFieldTokenPath(token));
+            }
+            return this;
+        }
+
+        public QueryFactory selectFields(List<Schema.SObjectField> fields) {
+            for (Schema.SObjectField token : fields) {
+                if (token == null) throw new jam.ProcessException();
+                this.fields.add(getFieldTokenPath(token));
+            }
+            return this;
+        }
+
+        public QueryFactory selectFieldSet(Schema.FieldSet fieldSet) {
+            return selectFieldSet(fieldSet, true);
+        }
+
+        public QueryFactory selectFieldSet(Schema.FieldSet fieldSet, Boolean allowCrossObject) {
+            if (fieldSet.getSObjectType() != table) throw new jam.ProcessException('Field set "' + fieldSet.getName() + '" is not for SObject type "' + table + '"');
+            for (Schema.FieldSetMember field : fieldSet.getFields()) {
+                if (!allowCrossObject && field.getFieldPath().contains('.')) throw new jam.ProcessException('Cross-object fields not allowed and field "' + field.getFieldPath() + '"" is a cross-object field.');
+                fields.add(getFieldPath(field.getFieldPath()));
+            }
+            return this;
+        }
+
+        public QueryFactory setCondition(String conditionExpression) {
+            this.conditionExpression = conditionExpression;
+            return this;
+        }
+
+        public QueryFactory setCondition(String conditionExpression, Map<String, Object> bindVariablesMap) {
+            this.setCondition(conditionExpression);
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public QueryFactory setBindVariables(Map<String, Object> bindVariablesMap) {
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public QueryFactory setConditionsAND(List<String> conditionExpressions) {
+            this.conditionExpression = String.join(conditionExpressions, ' AND ');
+            return this;
+        }
+
+        public QueryFactory setConditionsOR(List<String> conditionExpressions) {
+            this.conditionExpression = String.join(conditionExpressions, ' OR ');
+            return this;
+        }
+
+        public QueryFactory setConditionsAND(List<String> conditionExpressions, Map<String, Object> bindVariablesMap) {
+            this.setConditionsAND(conditionExpressions);
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public QueryFactory setConditionsOR(List<String> conditionExpressions, Map<String, Object> bindVariablesMap) {
+            this.setConditionsOR(conditionExpressions);
+            this.bindVariablesMap = bindVariablesMap;
+            return this;
+        }
+
+        public String getCondition() {
+            return this.conditionExpression;
+        }
+
+        public QueryFactory setLimit(Integer limitCount) {
+            this.limitCount = limitCount;
+            return this;
+        }
+
+        public Integer getLimit() {
+            return this.limitCount;
+        }
+
+        public QueryFactory setOffset(Integer offsetCount) {
+            this.offsetCount = offsetCount;
+            return this;
+        }
+
+        public Integer getOffset() {
+            return this.offsetCount;
+        }
+
+        public QueryFactory addOrdering(Ordering o) {
+            this.order.add(o);
+            return this;
+        }
+
+        public QueryFactory setOrdering(Ordering o) {
+            this.order = new List<Ordering>{
+                    o
+            };
+            return this;
+        }
+
+        public List<Ordering> getOrderings() {
+            return this.order;
+        }
+
+        public Set<String> getSelectedFields() {
+            return this.fields;
+        }
+
+        public QueryFactory subSelectQuery(SObjectType related) {
+            return setSubSelectQuery(getChildRelationship(related));
+        }
+
+        public QueryFactory subSelectQuery(String relationshipName) {
+            ChildRelationship relationship = getChildRelationship(relationshipName);
+            if (relationship != null) {
+                return setSubSelectQuery(relationship);
+            }
+            throw new jam.ProcessException('Invalid call to subselectQuery with relationshipName = ' + relationshipName + '.  Relationship does not exist for ' + table.getDescribe().getName());
+        }
+
+        public QueryFactory subSelectQuery(ChildRelationship relationship) {
+            return setSubSelectQuery(relationship);
+        }
+
+        private QueryFactory setSubSelectQuery(ChildRelationship relationship) {
+            if (this.relationship != null) {
+                throw new jam.ProcessException('Invalid call to subselectQuery.  You may not add a subselect query to a subselect query.');
+            }
+            if (this.subSelectQueryMap == null) {
+                this.subSelectQueryMap = new Map<ChildRelationship, QueryFactory>();
+            }
+            if (this.subSelectQueryMap.containsKey(relationship)) {
+                return subSelectQueryMap.get(relationship);
+            }
+
+            QueryFactory subSelectQuery = new QueryFactory(relationship);
+            subSelectQuery.isSubSelectFactory = true;
+
+            subSelectQuery.setSortSelectFields(sortSelectFields);
+            subSelectQueryMap.put(relationship, subSelectQuery);
+            return subSelectQuery;
+        }
+
+        public List<QueryFactory> getSubSelectQueries() {
+            if (subSelectQueryMap != null) {
+                return subSelectQueryMap.values();
+            }
+            return null;
+        }
+
+        private Schema.ChildRelationship getChildRelationship(SObjectType objType) {
+            for (Schema.ChildRelationship childRow : table.getDescribe().getChildRelationships()) {
+                if (childRow.getChildSObject() == objType && childRow.getRelationshipName() != null) {
+                    return childRow;
+                }
+            }
+            throw new jam.ProcessException('Invalid call to subselectQuery.  Invalid relationship for table ' + table + ' and objtype=' + objType);
+        }
+
+        private Schema.ChildRelationship getChildRelationship(String relationshipName) {
+            for (Schema.ChildRelationship childRow : table.getDescribe().getChildRelationships()) {
+                if (childRow.getRelationshipName() == relationshipName) {
+                    return childRow;
+                }
+            }
+            return null;
+        }
+
+        public QueryFactory addOrdering(String fieldName, SortOrder direction, Boolean nullsLast) {
+            order.add(
+                    new Ordering(getFieldPath(fieldName), direction, nullsLast)
+            );
+            return this;
+        }
+
+        public QueryFactory addOrdering(SObjectField field, SortOrder direction, Boolean nullsLast) {
+            order.add(
+                    new Ordering(getFieldTokenPath(field), direction, nullsLast)
+            );
+            return this;
+        }
+
+        public QueryFactory addOrdering(String fieldName, SortOrder direction) {
+            order.add(
+                    new Ordering(getFieldPath(fieldName), direction)
+            );
+            return this;
+        }
+
+        public QueryFactory addOrdering(SObjectField field, SortOrder direction) {
+            order.add(
+                    new Ordering(getFieldTokenPath(field), direction)
+            );
+            return this;
+        }
+
+        public QueryFactory setOrdering(String fieldName, SortOrder direction, Boolean nullsLast) {
+            Ordering ordr = new Ordering(getFieldPath(fieldName), direction, nullsLast);
+            return setOrdering(ordr);
+        }
+
+        public QueryFactory setOrdering(SObjectField field, SortOrder direction, Boolean nullsLast) {
+            Ordering ordr = new Ordering(getFieldTokenPath(field), direction, nullsLast);
+            return setOrdering(ordr);
+        }
+
+        public QueryFactory setOrdering(String fieldName, SortOrder direction) {
+            Ordering ordr = new Ordering(getFieldPath(fieldName), direction);
+            return setOrdering(ordr);
+        }
+
+        public QueryFactory setOrdering(SObjectField field, SortOrder direction) {
+            Ordering ordr = new Ordering(getFieldTokenPath(field), direction);
+            return setOrdering(ordr);
+        }
+
+        public String toSOQL() {
+            String result = 'SELECT ';
+
+            if (fields.size() == 0) {
+                result += 'Id';
+            } else {
+                List<String> fieldsToQuery = new List<String>(fields);
+
+                if (sortSelectFields) {
+                    fieldsToQuery.sort();
+                }
+
+                result += String.join(fieldsToQuery, ', ');
+            }
+
+            if (subSelectQueryMap != null && !subSelectQueryMap.isEmpty()) {
+                for (QueryFactory childRow : subSelectQueryMap.values()) {
+                    result += ', (' + childRow.toSOQL() + ') ';
+                }
+            }
+
+            result += ' FROM ' + (relationship != null ? relationship.getRelationshipName() : table.getDescribe().getName());
+            if (String.isNotBlank(conditionExpression)) result += ' WHERE ' + conditionExpression;
+
+            if (this.isSecurityEnforced && !this.isSubSelectFactory) {
+                result += ' WITH USER_MODE';
+            }
+
+            if (order.size() > 0) {
+                result += ' ORDER BY ';
+                for (Ordering o : order) result += o.toSOQL() + ', ';
+                result = result.substring(0, result.length() - 2);
+            }
+
+            if (limitCount != null) result += ' LIMIT ' + limitCount;
+
+            if (offsetCount != null) result += ' OFFSET ' + offsetCount;
+
+            return result;
+        }
+
+        public List<SObject> query() {
+            return (this.bindVariablesMap == null) ?
+                    Database.query(this.toSOQL()) :
+                    Database.queryWithBinds(
+                            this.toSOQL().remove('WITH USER_MODE'),
+                            this.bindVariablesMap,
+                            this.isSecurityEnforced ? AccessLevel.USER_MODE : AccessLevel.SYSTEM_MODE
+                    );
+        }
+
+        public QueryFactory deepClone() {
+
+            QueryFactory clone = new QueryFactory(this.table)
+                    .setLimit(this.limitCount)
+                    .setOffset(this.offsetCount)
+                    .setCondition(this.conditionExpression)
+                    .setBindVariables(this.bindVariablesMap);
+
+            Map<Schema.ChildRelationship, QueryFactory> subqueries = this.subSelectQueryMap;
+            if (subqueries != null) {
+                Map<Schema.ChildRelationship, QueryFactory> clonedSubqueries = new Map<Schema.ChildRelationship, QueryFactory>();
+                for (Schema.ChildRelationship key : subqueries.keySet()) {
+                    clonedSubqueries.put(key, subqueries.get(key).deepClone());
+                }
+                clone.subSelectQueryMap = clonedSubqueries;
+            }
+
+            clone.relationship = this.relationship;
+            clone.order = this.order.clone();
+            clone.fields = this.fields.clone();
+
+            return clone;
+        }
+
+    }
+
+    public class Ordering {
+        private SortOrder direction;
+        private Boolean nullsLast;
+        private String field;
+
+        public Ordering(String sObjectTypeStr, String fieldName, SortOrder direction) {
+
+            this(
+                    Schema.getGlobalDescribe().get(sObjectTypeStr.toLowerCase()).getDescribe().fields.getMap().get(fieldName),
+                    direction
+            );
+        }
+
+        public Ordering(Schema.SObjectField field, SortOrder direction) {
+            this(field.getDescribe().getName(), direction, false);
+        }
+        public Ordering(Schema.SObjectField field, SortOrder direction, Boolean nullsLast) {
+            this(field.getDescribe().getName(), direction, nullsLast);
+        }
+        @TestVisible
+        private Ordering(String field, SortOrder direction) {
+            this(field, direction, false);
+        }
+        @TestVisible
+        private Ordering(String field, SortOrder direction, Boolean nullsLast) {
+            this.direction = direction;
+            this.field = field;
+            this.nullsLast = nullsLast;
+        }
+        public String getField() {
+            return this.field;
+        }
+        public SortOrder getDirection() {
+            return direction;
+        }
+        public String toSOQL() {
+            return field + ' ' + (direction == SortOrder.ASCENDING ? 'ASC' : 'DESC') + (nullsLast ? ' NULLS LAST ' : ' NULLS FIRST ');
+        }
+    }
+
+    public enum SortOrder {
+        ASCENDING, DESCENDING
+    }
+
+    //UNIT OF WORK
+    public interface IDoWork {
+        void doWork();
+    }
+
+    public interface IDML {
+        void dmlInsert(List<SObject> objList);
+        void dmlUpdate(List<SObject> objList);
+        void dmlDelete(List<SObject> objList);
+        void eventPublish(List<SObject> objList);
+    }
+
+    public inherited sharing class DMLAsUserImpl implements IDML
+    {
+        public void dmlInsert(List<SObject> objList){
+            jam.sObjects.insertAsUser(objList);
+        }
+        public void dmlUpdate(List<SObject> objList){
+            jam.sObjects.updateAsUser(objList);
+        }
+        public void dmlDelete(List<SObject> objList){
+            jam.sObjects.deleteAsUser(objList);
+        }
+        public void eventPublish(List<SObject> objList){
+            EventBus.publish(objList);
+        }
+    }
+
+    public inherited sharing class DMLAsSystemImpl implements IDML
+    {
+        public void dmlInsert(List<SObject> objList){
+            insert objList;
+        }
+        public void dmlUpdate(List<SObject> objList){
+            update objList;
+        }
+        public void dmlDelete(List<SObject> objList){
+            delete objList;
+        }
+        public void eventPublish(List<SObject> objList){
+            EventBus.publish(objList);
+        }
+    }
+
+    private class DoHierarchyWork implements jam.IDoWork {
+        IDML dmlImpl;
+
+        public DoHierarchyWork(SObjectUnitOfWork uow) {
+            this.dmlImpl = uow.getDmlImpl();
+            uow.registerWork(this);
+        }
+
+        private List<HierarchyReference> references = new List<HierarchyReference>();
+
+        public void registerRelationship(SObject child, SObjectField field, SObject parent) {
+            this.registerRelationship(new HierarchyReference(child, field, parent));
+        }
+
+        public void registerRelationship(HierarchyReference parentChildReference) {
+            this.references.add(parentChildReference);
+        }
+
+        public void doWork() {
+            Map<SObjectType, List<SObject>> recordsToUpdateMap = new Map<SObjectType, List<SObject>>();
+
+            for (HierarchyReference referenceVar : references) {
+
+                referenceVar.child.put(referenceVar.field, referenceVar.parent.Id);
+
+                List<SObject> records = recordsToUpdateMap.get(referenceVar.child.getSObjectType());
+                if (records == null) {
+                    records = new List<SObject>();
+                    recordsToUpdateMap.put(referenceVar.child.getSObjectType(), records);
+                }
+
+                if (new Map<Id, SObject>(records).containsKey(referenceVar.child.Id) == false) {
+                    records.add(referenceVar.child);
+                }
+
+            }
+
+            for (SObjectType sObjectTypeVar : recordsToUpdateMap.keySet()) {
+                dmlImpl.dmlUpdate(recordsToUpdateMap.get(sObjectTypeVar));
+            }
+        }
+    }
+
+    private class HierarchyReference {
+        public SObject child;
+        public SObjectField field;
+        public SObject parent;
+
+        public HierarchyReference(SObject child, SObjectField field, SObject parent) {
+            this.child = child;
+            this.field = field;
+            this.parent = parent;
+        }
+    }
+
+    private class Relationships {
+        private List<IRelationship> m_relationships = new List<IRelationship>();
+
+        public void resolve() {
+            for (IRelationship relationship : m_relationships) {
+                relationship.resolve();
+            }
+
+        }
+
+        public void add(SObject record, Schema.SObjectField relatedToField, SObject relatedTo) {
+            Relationship relationship = new Relationship();
+            relationship.Record = record;
+            relationship.RelatedToField = relatedToField;
+            relationship.RelatedTo = relatedTo;
+            m_relationships.add(relationship);
+        }
+
+        public void add(Messaging.SingleEmailMessage email, SObject relatedTo) {
+            EmailRelationship emailRelationship = new EmailRelationship();
+            emailRelationship.email = email;
+            emailRelationship.relatedTo = relatedTo;
+            m_relationships.add(emailRelationship);
+        }
+    }
+
+    private interface IRelationship {
+        void resolve();
+    }
+
+    private class Relationship implements IRelationship {
+        public SObject Record;
+        public Schema.SObjectField RelatedToField;
+        public SObject RelatedTo;
+
+        public void resolve() {
+            this.Record.put(this.RelatedToField, this.RelatedTo.Id);
+        }
+    }
+
+    private class EmailRelationship implements IRelationship {
+        public Messaging.SingleEmailMessage email;
+        public SObject relatedTo;
+
+        public void resolve() {
+            this.email.setWhatId(this.relatedTo.Id);
+        }
+    }
+
+    public interface IEmailWork extends IDoWork {
+        void registerEmail(Messaging.Email email);
+    }
+
+    private class SendEmailWork implements IEmailWork {
+        private List<Messaging.Email> emails;
+
+        public SendEmailWork() {
+            this.emails = new List<Messaging.Email>();
+        }
+
+        public void registerEmail(Messaging.Email email) {
+            this.emails.add(email);
+        }
+
+        public void doWork() {
+            if (emails.size() > 0) Messaging.sendEmail(emails);
+        }
+    }
+
+    public virtual class SObjectUnitOfWork {
+        protected List<Schema.SObjectType> m_sObjectTypes = new List<Schema.SObjectType>();
+
+        protected Map<String, List<SObject>> m_newListByType = new Map<String, List<SObject>>();
+
+        protected Map<String, Map<Id, SObject>> m_dirtyMapByType = new Map<String, Map<Id, SObject>>();
+
+        protected Map<String, Map<Id, SObject>> m_deletedMapByType = new Map<String, Map<Id, SObject>>();
+
+        protected Map<String, Relationships> m_relationships = new Map<String, Relationships>();
+
+        protected Map<String, List<SObject>> m_publishBeforeListByType = new Map<String, List<SObject>>();
+        protected Map<String, List<SObject>> m_publishAfterSuccessListByType = new Map<String, List<SObject>>();
+        protected Map<String, List<SObject>> m_publishAfterFailureListByType = new Map<String, List<SObject>>();
+
+        protected List<IDoWork> m_workList = new List<IDoWork>();
+
+        @TestVisible
+        protected IEmailWork m_emailWork = new SendEmailWork();
+
+        protected IDML m_dml;
+
+        private DoHierarchyWork doHierarchyWork;
+
+        public SObjectUnitOfWork(List<Schema.SObjectType> sObjectTypes) {
+            this(sObjectTypes, new DMLAsUserImpl());
+        }
+
+        public SObjectUnitOfWork(List<Schema.SObjectType> sObjectTypes, IDML dml) {
+            this.m_sObjectTypes = sObjectTypes.clone();
+
+            for (Schema.SObjectType sObjectType : this.m_sObjectTypes) {
+                handleRegisterType(sObjectType);
+            }
+
+            this.m_relationships.put(Messaging.SingleEmailMessage.class.getName(), new Relationships());
+            this.m_dml = dml;
+            this.doHierarchyWork = new DoHierarchyWork(this);
+        }
+
+        public IDML getDmlImpl() {
+            return this.m_dml;
+        }
+
+        public virtual void onRegisterType(Schema.SObjectType sObjectType) {
+        }
+        public virtual void onCommitWorkStarting() {
+        }
+
+        public virtual void onPublishBeforeEventsStarting() {
+        }
+        public virtual void onPublishBeforeEventsFinished() {
+        }
+
+        public virtual void onDMLStarting() {
+        }
+        public virtual void onDMLFinished() {
+        }
+
+        public virtual void onDoWorkStarting() {
+        }
+        public virtual void onDoWorkFinished() {
+        }
+
+        public virtual void onPublishAfterSuccessEventsStarting() {
+        }
+        public virtual void onPublishAfterSuccessEventsFinished() {
+        }
+
+        public virtual void onPublishAfterFailureEventsStarting() {
+        }
+        public virtual void onPublishAfterFailureEventsFinished() {
+        }
+
+        public virtual void onCommitWorkFinishing() {
+        }
+        public virtual void onCommitWorkFinished(Boolean wasSuccessful) {
+        }
+
+        private void handleRegisterType(Schema.SObjectType sObjectType) {
+            String sObjectName = sObjectType.getDescribe().getName();
+
+            m_newListByType.put(sObjectName, new List<SObject>());
+            m_dirtyMapByType.put(sObjectName, new Map<Id, SObject>());
+            m_deletedMapByType.put(sObjectName, new Map<Id, SObject>());
+            m_relationships.put(sObjectName, new Relationships());
+
+            m_publishBeforeListByType.put(sObjectName, new List<SObject>());
+            m_publishAfterSuccessListByType.put(sObjectName, new List<SObject>());
+            m_publishAfterFailureListByType.put(sObjectName, new List<SObject>());
+
+            onRegisterType(sObjectType);
+        }
+
+        public SObjectUnitOfWork registerWork(IDoWork work) {
+            m_workList.add(work);
+            return this;
+        }
+
+        public SObjectUnitOfWork registerEmail(Messaging.Email email) {
+            m_emailWork.registerEmail(email);
+            return this;
+        }
+
+        public SObjectUnitOfWork registerNew(SObject record) {
+            registerNew(record, null, null);
+            return this;
+        }
+
+        public SObjectUnitOfWork registerNew(List<SObject> records) {
+            for (SObject record : records) {
+                registerNew(record, null, null);
+            }
+            return this;
+        }
+
+        public SObjectUnitOfWork registerNew(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
+            if (record.Id != null) {
+                throw new jam.ProcessException('Only new records can be registered as new');
+            }
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) == '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} must use registerPublishBeforeTransaction or ' +
+                        'registerPublishAfterTransaction methods to be used within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_newListByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+            m_newListByType.get(sObjectType).add(record);
+            if (relatedToParentRecord != null && relatedToParentField != null) {
+                registerRelationship(record, relatedToParentField, relatedToParentRecord);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerUpsert(SObject record) {
+            if(record.Id == null) {
+                this.registerNew(record);
+            } else {
+                this.registerDirty(record);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerUpsert(List<SObject> records) {
+            for (SObject record : records) {
+                this.registerUpsert(record);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerRelationship(List<SObject> records, Schema.SObjectField relatedToField, SObject relatedTo) {
+            for (SObject record : records) {
+                this.registerRelationship(record, relatedToField, relatedTo);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerRelationship(SObject record, Schema.SObjectField relatedToField, SObject relatedTo) {
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) == '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} must use registerPublishBeforeTransaction or ' +
+                        'registerPublishAfterTransaction methods to be used within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_newListByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+            m_relationships.get(sObjectType).add(record, relatedToField, relatedTo);
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerRelationship(Messaging.SingleEmailMessage email, SObject relatedTo) {
+            m_relationships.get(Messaging.SingleEmailMessage.class.getName()).add(email, relatedTo);
+            return this;
+        }
+
+        public SObjectUnitOfWork registerDirty(SObject record) {
+            registerDirty(record, new List<SObjectField>());
+            return this;
+        }
+
+        public SObjectUnitOfWork registerDirty(SObject record, List<SObjectField> dirtyFields) {
+            if (record.Id == null) {
+                throw new jam.ProcessException('New records cannot be registered as dirty');
+            }
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) == '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} must use registerPublishBeforeTransaction or ' +
+                        'registerPublishAfterTransaction methods to be used within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_dirtyMapByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_dirtyMapByType.get(sObjectType).containsKey(record.Id) || dirtyFields.isEmpty()) {
+                m_dirtyMapByType.get(sObjectType).put(record.Id, record);
+            } else {
+                SObject registeredRecord = m_dirtyMapByType.get(sObjectType).get(record.Id);
+
+                for (SObjectField dirtyField : dirtyFields) {
+                    registeredRecord.put(dirtyField, record.get(dirtyField));
+                }
+
+                m_dirtyMapByType.get(sObjectType).put(record.Id, registeredRecord);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerDirty(SObject record, Schema.SObjectField relatedToParentField, SObject relatedToParentRecord) {
+            if (record.Id == null) {
+                throw new jam.ProcessException('New records cannot be registered as dirty');
+            }
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) == '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} must use registerPublishBeforeTransaction or ' +
+                        'registerPublishAfterTransaction methods to be used within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_dirtyMapByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+            m_dirtyMapByType.get(sObjectType).put(record.Id, record);
+            if (relatedToParentRecord != null && relatedToParentField != null) {
+                registerRelationship(record, relatedToParentField, relatedToParentRecord);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerDirty(List<SObject> records) {
+            for (SObject record : records) {
+                this.registerDirty(record);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerDeleted(SObject record) {
+            if (record.Id == null) {
+                throw new jam.ProcessException('New records cannot be registered for deletion');
+            }
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) == '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} must use registerPublishBeforeTransaction or ' +
+                        'registerPublishAfterTransaction methods to be used within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_deletedMapByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+            m_deletedMapByType.get(sObjectType).put(record.Id, record);
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerDeleted(List<SObject> records) {
+            for (SObject record : records) {
+                this.registerDeleted(record);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerHierarchy(SObject child, SObjectField field, SObject parent) {
+            if (child.getSObjectType() == parent.getSObjectType()) {
+                doHierarchyWork.registerRelationship(child, field, parent);
+            } else {
+                throw new jam.ProcessException('Couldn\'t create hierarchy relationship for different SObject Types.');
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerPublishBeforeTransaction(SObject record) {
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) != '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} is invalid for publishing within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_publishBeforeListByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            m_publishBeforeListByType.get(sObjectType).add(record);
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerPublishBeforeTransaction(List<SObject> records) {
+            for (SObject record : records) {
+                this.registerPublishBeforeTransaction(record);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerPublishAfterSuccessTransaction(SObject record) {
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) != '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} is invalid for publishing within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_publishAfterSuccessListByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            m_publishAfterSuccessListByType.get(sObjectType).add(record);
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerPublishAfterSuccessTransaction(List<SObject> records) {
+            for (SObject record : records) {
+                this.registerPublishAfterSuccessTransaction(record);
+            }
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerPublishAfterFailureTransaction(SObject record) {
+            String sObjectType = record.getSObjectType().getDescribe().getName();
+
+            if (sObjectType.length() > 3 && sObjectType.right(3) != '__e') {
+                throw new jam.ProcessException(String.format('SObject type {0} is invalid for publishing within this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            if (!m_publishAfterFailureListByType.containsKey(sObjectType)) {
+                throw new jam.ProcessException(String.format('SObject type {0} is not supported by this unit of work', new String[]{
+                        sObjectType
+                }));
+            }
+
+            m_publishAfterFailureListByType.get(sObjectType).add(record);
+
+            return this;
+        }
+
+        public SObjectUnitOfWork registerPublishAfterFailureTransaction(List<SObject> records) {
+            for (SObject record : records) {
+                this.registerPublishAfterFailureTransaction(record);
+            }
+
+            return this;
+        }
+
+        public void commitWork() {
+            onCommitWorkStarting();
+
+            Savepoint sp = Database.setSavepoint();
+            Boolean wasSuccessful = false;
+            try {
+                onPublishBeforeEventsStarting();
+
+                for (Schema.SObjectType sObjectType : m_sObjectTypes) {
+                    m_dml.eventPublish(m_publishBeforeListByType.get(sObjectType.getDescribe().getName()));
+                }
+
+                onPublishBeforeEventsFinished();
+
+                onDMLStarting();
+                for (Schema.SObjectType sObjectType : m_sObjectTypes) {
+                    m_relationships.get(sObjectType.getDescribe().getName()).resolve();
+                    m_dml.dmlInsert(m_newListByType.get(sObjectType.getDescribe().getName()));
+                }
+                for (Schema.SObjectType sObjectType : m_sObjectTypes) {
+                    m_dml.dmlUpdate(m_dirtyMapByType.get(sObjectType.getDescribe().getName()).values());
+                }
+                Integer objectIdx = m_sObjectTypes.size() - 1;
+                while (objectIdx >= 0) {
+                    m_dml.dmlDelete(m_deletedMapByType.get(m_sObjectTypes[objectIdx--].getDescribe().getName()).values());
+                }
+
+                m_relationships.get(Messaging.SingleEmailMessage.class.getName()).resolve();
+
+                onDMLFinished();
+
+                onDoWorkStarting();
+                m_workList.add(m_emailWork);
+                for (IDoWork work : m_workList) {
+                    work.doWork();
+                }
+                onDoWorkFinished();
+
+                onCommitWorkFinishing();
+
+                wasSuccessful = true;
+            } catch (Exception e) {
+                Database.rollback(sp);
+
+                throw e;
+            } finally {
+
+                if (wasSuccessful) {
+                    onPublishAfterSuccessEventsStarting();
+
+                    for (Schema.SObjectType sObjectType : m_sObjectTypes) {
+                        m_dml.eventPublish(m_publishAfterSuccessListByType.get(sObjectType.getDescribe().getName()));
+                    }
+
+                    onPublishAfterSuccessEventsFinished();
+                } else {
+                    onPublishAfterFailureEventsStarting();
+
+                    for (Schema.SObjectType sObjectType : m_sObjectTypes) {
+                        m_dml.eventPublish(m_publishAfterFailureListByType.get(sObjectType.getDescribe().getName()));
+                    }
+
+                    onPublishAfterFailureEventsFinished();
+                }
+
+                onCommitWorkFinished(wasSuccessful);
+            }
+        }
+    }
+
+
+
+    //UTILS LAZY PROPERTIES
     public static PicklistExtensions picklists {
         get {
             if (picklists == null) {
@@ -2382,464 +3739,4 @@ global inherited sharing class jam implements Callable {
         }
         private set;
     }
-
-    public static QueryFactory queryFactory(SObjectType sObjectType){
-        return new QueryFactory(sObjectType);
-    }
-    public inherited sharing class QueryFactory {
-
-
-        public Schema.SObjectType table { get; private set; }
-        @TestVisible
-        private Set<String> fields;
-        private String conditionExpression;
-        private Map<String, Object> bindVariablesMap;
-        private Integer limitCount;
-        private Integer offsetCount;
-        private List<Ordering> order;
-        private Boolean isSecurityEnforced = true;
-        private Boolean sortSelectFields = true;
-
-        private Schema.ChildRelationship relationship;
-        private Map<Schema.ChildRelationship, QueryFactory> subSelectQueryMap;
-        private Boolean isSubSelectFactory = false;
-
-        private String getFieldPath(String fieldName) {
-            if (!fieldName.contains('.')) {
-                Schema.SObjectField token = table.getDescribe().fields.getMap().get(fieldName.toLowerCase());
-                if (token == null) throw new InvalidFieldException(fieldName, this.table);
-                return token.getDescribe().getName();
-            }
-
-            List<String> fieldPath = new List<String>();
-            Schema.SObjectType lastSObjectType = table;
-            Iterator<String> i = fieldName.split('\\.').iterator();
-            while (i.hasNext()) {
-                String field = i.next();
-                Schema.SObjectField token = table.getDescribe().fields.getMap().get(fieldName.toLowerCase());
-                DescribeFieldResult tokenDescribe = token != null ? token.getDescribe() : null;
-
-                if (token != null && i.hasNext() && tokenDescribe.getSoapType() == Schema.SoapType.ID) {
-                    lastSObjectType = tokenDescribe.getReferenceTo()[0];
-                    fieldPath.add(tokenDescribe.getRelationshipName());
-                } else if (token != null && !i.hasNext()) {
-                    fieldPath.add(tokenDescribe.getName());
-                } else {
-                    if (token == null) {
-                        throw new InvalidFieldException(field, lastSObjectType);
-                    } else {
-                        throw new NonReferenceFieldException(lastSObjectType + '.' + field + ' is not a lookup or master-detail field but is used in a cross-object query field.');
-                    }
-                }
-            }
-
-            return String.join(fieldPath, '.');
-        }
-
-        @TestVisible
-        private String getFieldTokenPath(Schema.SObjectField field) {
-            if (field == null) {
-                throw new InvalidFieldException('Invalid field: null');
-            }
-            return field.getDescribe().getName();
-        }
-
-        public Boolean equals(Object obj) {
-            if (!(obj instanceof QueryFactory) || ((QueryFactory) obj).table != this.table || ((QueryFactory) obj).fields.size() != this.fields.size()) return false;
-            return ((QueryFactory) obj).toSOQL() == this.toSOQL();
-        }
-
-        public QueryFactory(Schema.SObjectType table) {
-            this.table = table;
-            fields = new Set<String>();
-            order = new List<Ordering>();
-        }
-
-        private QueryFactory(Schema.ChildRelationship relationship) {
-            this(relationship.getChildSObject());
-            this.relationship = relationship;
-        }
-
-        public QueryFactory setSecurityEnforced(Boolean isSecurityEnforced) {
-            this.isSecurityEnforced = isSecurityEnforced;
-            return this;
-        }
-
-        public QueryFactory setSortSelectFields(Boolean doSort) {
-            this.sortSelectFields = doSort;
-            return this;
-        }
-
-        public QueryFactory selectField(String fieldName) {
-            fields.add(getFieldPath(fieldName));
-            return this;
-        }
-
-        public QueryFactory selectField(Schema.SObjectField field) {
-            if (field == null) throw new InvalidFieldException(null, this.table);
-            fields.add(getFieldTokenPath(field));
-            return this;
-        }
-
-        public QueryFactory selectFields(Set<String> fieldNames) {
-            for (String fieldName : fieldNames) {
-                fields.add(getFieldPath(fieldName));
-            }
-            return this;
-        }
-
-        public QueryFactory selectFields(List<String> fieldNames) {
-            for (String fieldName : fieldNames) fields.add(getFieldPath(fieldName));
-            return this;
-        }
-
-        public QueryFactory selectFields(Set<Schema.SObjectField> fields) {
-            for (Schema.SObjectField token : fields) {
-                if (token == null) throw new InvalidFieldException();
-                this.fields.add(getFieldTokenPath(token));
-            }
-            return this;
-        }
-
-        public QueryFactory selectFields(List<Schema.SObjectField> fields) {
-            for (Schema.SObjectField token : fields) {
-                if (token == null) throw new InvalidFieldException();
-                this.fields.add(getFieldTokenPath(token));
-            }
-            return this;
-        }
-
-        public QueryFactory selectFieldSet(Schema.FieldSet fieldSet) {
-            return selectFieldSet(fieldSet, true);
-        }
-
-        public QueryFactory selectFieldSet(Schema.FieldSet fieldSet, Boolean allowCrossObject) {
-            if (fieldSet.getSObjectType() != table) throw new InvalidFieldSetException('Field set "' + fieldSet.getName() + '" is not for SObject type "' + table + '"');
-            for (Schema.FieldSetMember field : fieldSet.getFields()) {
-                if (!allowCrossObject && field.getFieldPath().contains('.')) throw new InvalidFieldSetException('Cross-object fields not allowed and field "' + field.getFieldPath() + '"" is a cross-object field.');
-                fields.add(getFieldPath(field.getFieldPath()));
-            }
-            return this;
-        }
-
-        public QueryFactory setCondition(String conditionExpression) {
-            this.conditionExpression = conditionExpression;
-            return this;
-        }
-
-        public QueryFactory setCondition(String conditionExpression, Map<String, Object> bindVariablesMap) {
-            this.setCondition(conditionExpression);
-            this.bindVariablesMap = bindVariablesMap;
-            return this;
-        }
-
-        public QueryFactory setBindVariables(Map<String, Object> bindVariablesMap) {
-            this.bindVariablesMap = bindVariablesMap;
-            return this;
-        }
-
-        public QueryFactory setConditionsAND(List<String> conditionExpressions) {
-            this.conditionExpression = String.join(conditionExpressions, ' AND ');
-            return this;
-        }
-
-        public QueryFactory setConditionsOR(List<String> conditionExpressions) {
-            this.conditionExpression = String.join(conditionExpressions, ' OR ');
-            return this;
-        }
-
-        public QueryFactory setConditionsAND(List<String> conditionExpressions, Map<String, Object> bindVariablesMap) {
-            this.setConditionsAND(conditionExpressions);
-            this.bindVariablesMap = bindVariablesMap;
-            return this;
-        }
-
-        public QueryFactory setConditionsOR(List<String> conditionExpressions, Map<String, Object> bindVariablesMap) {
-            this.setConditionsOR(conditionExpressions);
-            this.bindVariablesMap = bindVariablesMap;
-            return this;
-        }
-
-        public String getCondition() {
-            return this.conditionExpression;
-        }
-
-        public QueryFactory setLimit(Integer limitCount) {
-            this.limitCount = limitCount;
-            return this;
-        }
-
-        public Integer getLimit() {
-            return this.limitCount;
-        }
-
-        public QueryFactory setOffset(Integer offsetCount) {
-            this.offsetCount = offsetCount;
-            return this;
-        }
-
-        public Integer getOffset() {
-            return this.offsetCount;
-        }
-
-        public QueryFactory addOrdering(Ordering o) {
-            this.order.add(o);
-            return this;
-        }
-
-        public QueryFactory setOrdering(Ordering o) {
-            this.order = new List<Ordering>{
-                o
-            };
-            return this;
-        }
-
-        public List<Ordering> getOrderings() {
-            return this.order;
-        }
-
-        public Set<String> getSelectedFields() {
-            return this.fields;
-        }
-
-        public QueryFactory subSelectQuery(SObjectType related) {
-            return setSubSelectQuery(getChildRelationship(related));
-        }
-
-        public QueryFactory subSelectQuery(String relationshipName) {
-            ChildRelationship relationship = getChildRelationship(relationshipName);
-            if (relationship != null) {
-                return setSubSelectQuery(relationship);
-            }
-            throw new InvalidSubqueryRelationshipException('Invalid call to subselectQuery with relationshipName = ' + relationshipName + '.  Relationship does not exist for ' + table.getDescribe().getName());
-        }
-
-        public QueryFactory subSelectQuery(ChildRelationship relationship) {
-            return setSubSelectQuery(relationship);
-        }
-
-        private QueryFactory setSubSelectQuery(ChildRelationship relationship) {
-            if (this.relationship != null) {
-                throw new InvalidSubqueryRelationshipException('Invalid call to subselectQuery.  You may not add a subselect query to a subselect query.');
-            }
-            if (this.subSelectQueryMap == null) {
-                this.subSelectQueryMap = new Map<ChildRelationship, QueryFactory>();
-            }
-            if (this.subSelectQueryMap.containsKey(relationship)) {
-                return subSelectQueryMap.get(relationship);
-            }
-
-            QueryFactory subSelectQuery = new QueryFactory(relationship);
-            subSelectQuery.isSubSelectFactory = true;
-
-            subSelectQuery.setSortSelectFields(sortSelectFields);
-            subSelectQueryMap.put(relationship, subSelectQuery);
-            return subSelectQuery;
-        }
-
-        public List<QueryFactory> getSubSelectQueries() {
-            if (subSelectQueryMap != null) {
-                return subSelectQueryMap.values();
-            }
-            return null;
-        }
-
-        private Schema.ChildRelationship getChildRelationship(SObjectType objType) {
-            for (Schema.ChildRelationship childRow : table.getDescribe().getChildRelationships()) {
-                if (childRow.getChildSObject() == objType && childRow.getRelationshipName() != null) {
-                    return childRow;
-                }
-            }
-            throw new InvalidSubqueryRelationshipException('Invalid call to subselectQuery.  Invalid relationship for table ' + table + ' and objtype=' + objType);
-        }
-
-        private Schema.ChildRelationship getChildRelationship(String relationshipName) {
-            for (Schema.ChildRelationship childRow : table.getDescribe().getChildRelationships()) {
-                if (childRow.getRelationshipName() == relationshipName) {
-                    return childRow;
-                }
-            }
-            return null;
-        }
-
-        public QueryFactory addOrdering(String fieldName, SortOrder direction, Boolean nullsLast) {
-            order.add(
-                new Ordering(getFieldPath(fieldName), direction, nullsLast)
-            );
-            return this;
-        }
-
-        public QueryFactory addOrdering(SObjectField field, SortOrder direction, Boolean nullsLast) {
-            order.add(
-                new Ordering(getFieldTokenPath(field), direction, nullsLast)
-            );
-            return this;
-        }
-
-        public QueryFactory addOrdering(String fieldName, SortOrder direction) {
-            order.add(
-                new Ordering(getFieldPath(fieldName), direction)
-            );
-            return this;
-        }
-
-        public QueryFactory addOrdering(SObjectField field, SortOrder direction) {
-            order.add(
-                new Ordering(getFieldTokenPath(field), direction)
-            );
-            return this;
-        }
-
-        public QueryFactory setOrdering(String fieldName, SortOrder direction, Boolean nullsLast) {
-            Ordering ordr = new Ordering(getFieldPath(fieldName), direction, nullsLast);
-            return setOrdering(ordr);
-        }
-
-        public QueryFactory setOrdering(SObjectField field, SortOrder direction, Boolean nullsLast) {
-            Ordering ordr = new Ordering(getFieldTokenPath(field), direction, nullsLast);
-            return setOrdering(ordr);
-        }
-
-        public QueryFactory setOrdering(String fieldName, SortOrder direction) {
-            Ordering ordr = new Ordering(getFieldPath(fieldName), direction);
-            return setOrdering(ordr);
-        }
-
-        public QueryFactory setOrdering(SObjectField field, SortOrder direction) {
-            Ordering ordr = new Ordering(getFieldTokenPath(field), direction);
-            return setOrdering(ordr);
-        }
-
-        public String toSOQL() {
-            String result = 'SELECT ';
-
-            if (fields.size() == 0) {
-                result += 'Id';
-            } else {
-                List<String> fieldsToQuery = new List<String>(fields);
-
-                if (sortSelectFields) {
-                    fieldsToQuery.sort();
-                }
-
-                result += String.join(fieldsToQuery, ', ');
-            }
-
-            if (subSelectQueryMap != null && !subSelectQueryMap.isEmpty()) {
-                for (QueryFactory childRow : subSelectQueryMap.values()) {
-                    result += ', (' + childRow.toSOQL() + ') ';
-                }
-            }
-
-            result += ' FROM ' + (relationship != null ? relationship.getRelationshipName() : table.getDescribe().getName());
-            if (String.isNotBlank(conditionExpression)) result += ' WHERE ' + conditionExpression;
-
-            if (this.isSecurityEnforced && !this.isSubSelectFactory) {
-                result += ' WITH USER_MODE';
-            }
-
-            if (order.size() > 0) {
-                result += ' ORDER BY ';
-                for (Ordering o : order) result += o.toSOQL() + ', ';
-                result = result.substring(0, result.length() - 2);
-            }
-
-            if (limitCount != null) result += ' LIMIT ' + limitCount;
-
-            if (offsetCount != null) result += ' OFFSET ' + offsetCount;
-
-            return result;
-        }
-
-        public List<SObject> query() {
-            return (this.bindVariablesMap == null) ?
-                Database.query(this.toSOQL()) :
-                Database.queryWithBinds(
-                    this.toSOQL().remove('WITH USER_MODE'),
-                    this.bindVariablesMap,
-                    this.isSecurityEnforced ? AccessLevel.USER_MODE : AccessLevel.SYSTEM_MODE
-                );
-        }
-
-        public QueryFactory deepClone() {
-
-            QueryFactory clone = new QueryFactory(this.table)
-                .setLimit(this.limitCount)
-                .setOffset(this.offsetCount)
-                .setCondition(this.conditionExpression)
-                .setBindVariables(this.bindVariablesMap);
-
-            Map<Schema.ChildRelationship, QueryFactory> subqueries = this.subSelectQueryMap;
-            if (subqueries != null) {
-                Map<Schema.ChildRelationship, QueryFactory> clonedSubqueries = new Map<Schema.ChildRelationship, QueryFactory>();
-                for (Schema.ChildRelationship key : subqueries.keySet()) {
-                    clonedSubqueries.put(key, subqueries.get(key).deepClone());
-                }
-                clone.subSelectQueryMap = clonedSubqueries;
-            }
-
-            clone.relationship = this.relationship;
-            clone.order = this.order.clone();
-            clone.fields = this.fields.clone();
-
-            return clone;
-        }
-
-    }
-
-    public class Ordering {
-        private SortOrder direction;
-        private Boolean nullsLast;
-        private String field;
-
-        public Ordering(String sObjectTypeStr, String fieldName, SortOrder direction) {
-
-            this(
-                Schema.getGlobalDescribe().get(sObjectTypeStr.toLowerCase()).getDescribe().fields.getMap().get(fieldName),
-                direction
-            );
-        }
-
-        public Ordering(Schema.SObjectField field, SortOrder direction) {
-            this(field.getDescribe().getName(), direction, false);
-        }
-        public Ordering(Schema.SObjectField field, SortOrder direction, Boolean nullsLast) {
-            this(field.getDescribe().getName(), direction, nullsLast);
-        }
-        @TestVisible
-        private Ordering(String field, SortOrder direction) {
-            this(field, direction, false);
-        }
-        @TestVisible
-        private Ordering(String field, SortOrder direction, Boolean nullsLast) {
-            this.direction = direction;
-            this.field = field;
-            this.nullsLast = nullsLast;
-        }
-        public String getField() {
-            return this.field;
-        }
-        public SortOrder getDirection() {
-            return direction;
-        }
-        public String toSOQL() {
-            return field + ' ' + (direction == SortOrder.ASCENDING ? 'ASC' : 'DESC') + (nullsLast ? ' NULLS LAST ' : ' NULLS FIRST ');
-        }
-    }
-
-    public enum SortOrder {
-        ASCENDING, DESCENDING
-    }
-    public class InvalidFieldException extends Exception {
-        private String fieldName;
-        private Schema.SObjectType objectType;
-        public InvalidFieldException(String fieldName, Schema.SObjectType objectType) {
-            this.objectType = objectType;
-            this.fieldName = fieldName;
-            this.setMessage('Invalid field \'' + fieldName + '\' for object \'' + objectType + '\'');
-        }
-    }
-    public class InvalidFieldSetException extends Exception { }
-    public class NonReferenceFieldException extends Exception { }
-    public class InvalidSubqueryRelationshipException extends Exception { }
 }
