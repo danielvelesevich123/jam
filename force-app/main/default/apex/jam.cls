@@ -2125,7 +2125,21 @@ global inherited sharing class jam implements Callable {
         }
 
         public String compose(String template, DTO dto) {
+            String result = template;
+            List<jam.Expression> expressions = this.getExpressions(template);
 
+            for (jam.Expression expressionVar : expressions) {
+                try {
+                    result = expressionVar.apply(dto, result);
+                } catch (Exception ex) {
+                    throw new jam.ProcessException('Unable to apply merge field: ' + expressionVar.source);
+                }
+            }
+
+            return result;
+        }
+
+        public List<jam.Expression> getExpressions(String template) {
             String reExp = '(?s)(\\{!.+?\\})';
 
             Pattern patternVar = Pattern.compile(reExp);
@@ -2140,36 +2154,32 @@ global inherited sharing class jam implements Callable {
                 }
             }
 
-            String result = template;
+            List<jam.Expression> expressions = new List<jam.Expression>();
 
             for (String placeholder : placeholders) {
-
-                jam.Expression expressionVar = getExpression(placeholder);
-
-                try {
-                    result = expressionVar.apply(dto, result);
-                } catch (Exception ex) {
-                    throw new jam.ProcessException('Unable to apply merge field: ' + placeholder);
+                jam.Expression expressionVar;
+                if (String.isBlank(placeholder)) {
+                    expressions.add(expressionVar);
                 }
+
+                String expressionStr = placeholder.substring(2, placeholder.length() - 1);
+                expressionVar = new jam.MergeFieldExpression(expressionStr);
+                expressions.add(expressionVar);
             }
 
-            return result;
+            return expressions;
         }
 
-        public jam.Expression getExpression(String placeholder) {
-            jam.Expression expressionVar;
+        public Set<String> getSources(String template) {
+            Set<String> sources = new Set<String>();
+            List<jam.Expression> expressions = this.getExpressions(template);
 
-            if (String.isBlank(placeholder)) {
-                return expressionVar;
+            for (jam.Expression expressionVar : expressions) {
+                sources.add(expressionVar.source);
             }
 
-            // Remove the brackets  {! }
-            String expressionStr = placeholder.substring(2, placeholder.length() - 1);
-            expressionVar = new jam.MergeFieldExpression(expressionStr);
-
-            return expressionVar;
+            return sources;
         }
-
     }
 
     public abstract class Expression {
@@ -2202,7 +2212,22 @@ global inherited sharing class jam implements Callable {
 
         protected override String getValue(jam.DTO dtoVar) {
             String path = this.params.get(0);
-            String value = jam.objects.defaultIfNull(dtoVar.getString(path), '');
+            String value = '';
+
+            //OR implementation
+            if (path.contains('|')) {
+                for (String pathVar : path.split('\\|')) {
+                    value = jam.objects.defaultIfNull(dtoVar.getString(pathVar), '');
+
+                    if (String.isNotBlank(value)) {
+                        return value;
+                    }
+                }
+
+                return value;
+            }
+
+            value = jam.objects.defaultIfNull(dtoVar.getString(path), '');
             return value;
         }
     }
@@ -2268,7 +2293,7 @@ global inherited sharing class jam implements Callable {
                 className = actionParts[1];
             }
 
-            Type actionType = Type.forName(namespace, className);
+            Type actionType = Test.isRunningTest() ? Type.forName(actionName) : Type.forName(namespace, className);
             if (actionType == null) {
                 throw new jam.ProcessException(errorMessage);
             }
@@ -2569,7 +2594,7 @@ global inherited sharing class jam implements Callable {
                         (field.removeEndIgnoreCase('__r') + '__c') :
                         field);
 
-                if(token == null) {
+                if (token == null) {
                     token = lastSObjectType.getDescribe().fields.getMap().get(field + 'id');
                 }
 
@@ -2909,6 +2934,20 @@ global inherited sharing class jam implements Callable {
                     );
         }
 
+        public SObject queryFirstOrException() {
+            return this.queryFirstOrException('No records found for query: ' + this.toSOQL());
+        }
+
+        public SObject queryFirstOrException(String errorMessage) {
+            this.setLimit(1);
+            return (SObject) jam.arrays.firstOrException(this.query(), errorMessage);
+        }
+
+        public SObject queryFirstOrNull() {
+            this.setLimit(1);
+            return (SObject) jam.arrays.firstOrNull(this.query());
+        }
+
         public QueryFactory deepClone() {
 
             QueryFactory clone = new QueryFactory(this.table)
@@ -2991,34 +3030,32 @@ global inherited sharing class jam implements Callable {
         void eventPublish(List<SObject> objList);
     }
 
-    public inherited sharing class DMLAsUserImpl implements IDML
-    {
-        public void dmlInsert(List<SObject> objList){
+    public inherited sharing class DMLAsUserImpl implements IDML {
+        public void dmlInsert(List<SObject> objList) {
             jam.sObjects.insertAsUser(objList);
         }
-        public void dmlUpdate(List<SObject> objList){
+        public void dmlUpdate(List<SObject> objList) {
             jam.sObjects.updateAsUser(objList);
         }
-        public void dmlDelete(List<SObject> objList){
+        public void dmlDelete(List<SObject> objList) {
             jam.sObjects.deleteAsUser(objList);
         }
-        public void eventPublish(List<SObject> objList){
+        public void eventPublish(List<SObject> objList) {
             EventBus.publish(objList);
         }
     }
 
-    public inherited sharing class DMLAsSystemImpl implements IDML
-    {
-        public void dmlInsert(List<SObject> objList){
+    public inherited sharing class DMLAsSystemImpl implements IDML {
+        public void dmlInsert(List<SObject> objList) {
             insert objList;
         }
-        public void dmlUpdate(List<SObject> objList){
+        public void dmlUpdate(List<SObject> objList) {
             update objList;
         }
-        public void dmlDelete(List<SObject> objList){
+        public void dmlDelete(List<SObject> objList) {
             delete objList;
         }
-        public void eventPublish(List<SObject> objList){
+        public void eventPublish(List<SObject> objList) {
             EventBus.publish(objList);
         }
     }
@@ -3290,7 +3327,7 @@ global inherited sharing class jam implements Callable {
         }
 
         public UnitOfWork registerUpsert(SObject record) {
-            if(record.Id == null) {
+            if (record.Id == null) {
                 this.registerNew(record);
             } else {
                 this.registerDirty(record);
@@ -3607,7 +3644,6 @@ global inherited sharing class jam implements Callable {
             }
         }
     }
-
 
 
     //UTILS LAZY PROPERTIES

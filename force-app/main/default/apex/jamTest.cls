@@ -1,5 +1,5 @@
 @IsTest
-private class jamTest {
+public class jamTest {
     private static List<Contact> createAndReturnContacts(Integer numContacts) {
         List<Contact> contacts = new List<Contact>();
 
@@ -824,11 +824,34 @@ private class jamTest {
         }));
     }
 
+    @IsTest
+    static void testGetExpressions() {
+        String template = '{!firstParam} some text {!secondParam}';
+        System.assertEquals(jam.templates.getExpressions(template).size(), 2);
+    }
+
+    @IsTest
+    static void testGetSources() {
+        String template = '{!firstParam} some text {!secondParam}';
+        System.assertEquals(jam.templates.getSources(template).size(), 2);
+    }
+
     /**
     * ==============================================================================================================
     *                                             OBJECT EXTENSIONS
     * ==============================================================================================================
     */
+
+    @IsTest
+    static void testRunPackageAction() {
+        jam.setPackageActionMock('rs_stripy', 'StripeAct', new Map<String, Object>{
+                'id' => 'testid',
+                'url' => 'testUrl'
+        });
+
+        jam.Response response = jam.objects.runPackageAction('rs_stripy', 'StripeAct', null);
+        System.assert(response.isValid);
+    }
 
     @IsTest
     static void testGetMapValue() {
@@ -1009,7 +1032,7 @@ private class jamTest {
         };
 
         String requestJSON = JSON.serialize(requestMap);
-        String response = jam.runAction('jamTestAct', requestJSON);
+        String response = jam.runAction('jamTest.jamTestAct', requestJSON);
         System.assertNotEquals(null, response);
 
         Boolean didThrowException = false;
@@ -1025,6 +1048,137 @@ private class jamTest {
 
         jam.Response invalidResponse = new jam.Response('Invalid request attributes.');
         System.assert(invalidResponse.isValid != true);
+    }
+
+    public class jamTestAct extends jam.Action {
+        public override void run() {
+            //get any value from request
+            String recordId = (String) this.get('value');
+
+            //get string from request
+            String anyString = this.getString('string');
+
+            //get required string from request
+            String anyRequiredString = this.getRequiredString('requiredString');
+            //get required string from request with error message
+            String anyRequiredStringWithMessage = this.getRequiredString('requiredStringWithMessage', 'required string is missing');
+
+            //get integer from request
+            Integer anyInteger = this.getInteger('integer');
+
+            //get integer from request
+            Decimal anyDecimal = this.getDecimal('decimal');
+
+            //get integer from request
+            Long anyLong = this.getLong('long');
+
+            //get integer from request
+            Boolean anyBoolean = this.getBoolean('boolean');
+
+            //get integer from request
+            Date anyDate = this.getDate('date');
+
+            //get integer from request
+            Time anyTime = this.getTime('time');
+
+            //get datetime from request
+            Datetime datetimeVar = this.getDatetime('datetime');
+
+            //get strings from request
+            List<String> strings = this.getStrings('strings');
+
+            //get objects from request
+            List<Object> objects = this.getObjects('objects');
+
+            //get maps from request
+            List<Map<String, Object>> maps = this.getMaps('maps');
+
+            //get DTOs from request
+            List<jam.DTO> DTOs = this.getDTOs('DTOs');
+
+            //get SObjects from request
+            List<SObject> sObjects = this.getSObjects('contacts', Contact.SObjectType);
+
+            //initialize SObject from request
+            Contact contactVar = (Contact) this.getSObject('contact', Contact.SObjectType);
+
+            //initialize SObject records one by one from request
+            Account accVar = new Account();
+            Opportunity oppVar = new Opportunity();
+
+            this.getSObject('account', accVar)
+                    .getSObject('opportunity', oppVar);
+
+            contactVar.Email = 'test@test.com';
+
+            Contact contactVar2 = (Contact) jam.arrays.firstOrException([SELECT Id, FirstName, LastName, Email FROM Contact LIMIT1]);
+            List<Contact> contacts = new List<Contact>{
+                    contactVar, contactVar2
+            };
+
+            this
+                    .put('object', 2)
+                    .put('SObject', new Contact(LastName = '1'))
+                    .put('SObjectNotMappable', new Contact(LastName = '1'), false)
+                    .put('listObjects', new List<String>{
+                            '123', '234'
+                    })
+                    .put('listObjectsWithLimit', new List<String>{
+                            '123', '234'
+                    }, 1)
+                    .put('listSObjects', new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    })
+                    .put('listSObjectsNotMappable', new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }, false)
+                    .put('listSObjectsWithLimit', new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }, 1)
+                    .put('listSObjectsWithLimitNotMappable', new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }, false, 1);
+
+            this.put(new Map<String, Object>{
+                    'object' => 2,
+                    'listObjects' => new List<String>{
+                            '123', '234'
+                    },
+                    'listSObjects' => new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }
+            });
+
+            this.put(new Map<String, Object>{
+                    'object' => 2,
+                    'listObjectsWithLimit' => new List<String>{
+                            '123', '234'
+                    },
+                    'listSObjectsWithLimit' => new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }
+            }, 1);
+
+            this.put(new Map<String, Object>{
+                    'object' => 2,
+                    'listObjects' => new List<String>{
+                            '123', '234'
+                    },
+                    'listSObjectsNotMappable' => new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }
+            }, false);
+
+            this.put(new Map<String, Object>{
+                    'object' => 2,
+                    'listObjectsWithLimit' => new List<String>{
+                            '123', '234'
+                    },
+                    'listSObjectsWithLimitNotMappable' => new List<Contact>{
+                            new Contact(LastName = '1'), new Contact(LastName = '2')
+                    }
+            }, false, 1);
+        }
     }
 
     //QUERY FACTORY
@@ -1742,46 +1896,6 @@ private class jamTest {
         System.assertNotEquals(orderedQuery, actualSoql);
     }
 
-
-    public static User createTestUser_noAccess() {
-        User usr;
-        try {
-            PermissionSet ps = [
-                    SELECT Profile.Id, Profile.Name
-                    FROM PermissionSet
-                    WHERE IsOwnedByProfile = TRUE
-                    AND Profile.UserType = 'Standard'
-                    AND Id NOT IN (
-                            SELECT ParentId
-                            FROM ObjectPermissions
-                            WHERE SobjectType = 'Account'
-                            AND PermissionsRead = TRUE
-                    )
-                    LIMIT 1
-            ];
-
-            if (ps != null) {
-                usr = new User(
-                        FirstName = 'testUsrF',
-                        LastName = 'testUsrL',
-                        Alias = 'tstUsr',
-                        Email = 'testy.test@test.com',
-                        Username = 'test' + Math.random().format() + 'user99@test.com',
-                        EmailEncodingKey = 'ISO-8859-1',
-                        LanguageLocaleKey = 'en_US',
-                        TimeZoneSidKey = 'America/Los_Angeles',
-                        LocaleSidKey = 'en_US',
-                        ProfileId = ps.Profile.Id,
-                        IsActive = true
-                );
-                insert usr;
-            }
-        } catch (Exception e) {
-            return null;
-        }
-        return usr;
-    }
-
     //UNIT OF WORK
     private static List<Schema.SObjectType> MY_SOBJECTS =
             new Schema.SObjectType[]{
@@ -2308,7 +2422,7 @@ private class jamTest {
     }
 
     @IsTest
-    static void systemInsert() {
+    private static void systemInsert() {
         Opportunity o1 = new Opportunity(Name = 'Original1 Opp', StageName = 'Won', CloseDate = Date.today());
 
         User restrictedUser = createRestrictedUser();
@@ -2328,7 +2442,7 @@ private class jamTest {
     }
 
     @IsTest
-    static void flsRestrictedInsert() {
+    private static void flsRestrictedInsert() {
         Campaign c1 = new Campaign(Name = 'Test1 Campaign');
         System.runAs(new User(Id = UserInfo.getUserId())) {
             insert new Campaign[]{
@@ -2357,7 +2471,7 @@ private class jamTest {
     }
 
     @IsTest
-    static void flsUnrestrictedUpsert() {
+    private static void flsUnrestrictedUpsert() {
         Campaign c1 = new Campaign(Name = 'Test1 Campaign');
         Campaign c2 = new Campaign(Name = 'Test2 Campaign');
         System.runAs(new User(Id = UserInfo.getUserId())) {
@@ -2391,7 +2505,7 @@ private class jamTest {
     }
 
     @IsTest
-    static void crudUnrestrictedInsertUpdateDelete() {
+    private static void crudUnrestrictedInsertUpdateDelete() {
         Campaign c1 = new Campaign(Name = 'Test1 Campaign');
         jam.sObjects.insertAsUser(c1);
 
@@ -2413,7 +2527,7 @@ private class jamTest {
     }
 
     @IsTest
-    static void crudRestrictedInsertUpdateDelete() {
+    private static void crudRestrictedInsertUpdateDelete() {
         User restrictedUser = createRestrictedUser();
 
         Campaign c1 = new Campaign(Name = 'Test1 Campaign');
@@ -2451,7 +2565,7 @@ private class jamTest {
     }
 
     @IsTest
-    static void testFailedUpdateWithErroneousId() {
+    private static void testFailedUpdateWithErroneousId() {
         Campaign c1 = new Campaign(Name = 'Test1 Campaign');
         Id cId = null;
 
@@ -2464,7 +2578,7 @@ private class jamTest {
         try {
             Campaign c1Resurrected = new Campaign(Id = cId, Name = 'Resurrected Campaign');
             jam.sObjects.upsertAsUser(c1Resurrected);
-            System.assert(false, 'Expected a DMLManagerException! Attempting to update a record with an erroneous Id should fail');
+            System.assert(false, 'Expected an ProcessException! Attempting to update a record with an erroneous Id should fail');
         } catch (jam.ProcessException dmle) {
             //expected
             System.assert(dmle.getMessage().contains('An existing record could not be found'));
@@ -2505,10 +2619,10 @@ private class jamTest {
         public HttpResponse respond(HttpRequest req) {
             String endpoint = req.getEndpoint();
             String method = req.getMethod();
+            String mockData = endpointResponseMap.get(method + '|' + endpoint.substringBefore('?'));
 
-            String mockData = endpointResponseMap.get(method + '|' + endpoint);
             jam.objects.throwIfBlank(mockData, 'No Mock endpoint: ' + req.getEndpoint());
-            List<String> mockParts = mockData.split('|');
+            List<String> mockParts = mockData.split('\\|');
 
             HttpResponse res = new HttpResponse();
             res.setHeader('Content-Type', 'application/json');
@@ -2534,7 +2648,7 @@ private class jamTest {
             return add('GET', endpoint, 200, response);
         }
 
-        private HttpMock setMock() {
+        public HttpMock setMock() {
             Test.setMock(HttpCalloutMock.class, this);
             return this;
         }
