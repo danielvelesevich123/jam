@@ -1,17 +1,27 @@
 global inherited sharing class jam implements Callable {
 
+    public interface AllowsCallable {}
+
     /*
-    *   Callable Interface implementation allows for the execution of the Action from another package
-    *   Type.forName('packageNamespace', 'jam').newInstance().call('SampleAct', new Map<String, Object>{'key' => 'value'})
+    *   Callable Interface implementation allows for the execution of the Action from another package.
+    *   The calling Action MUST implement the jam.AllowsCallable interface.
+    *
+    *   jam.objects.runPackageAction('namespace2', 'SampleAct', new Map<String, Object>{
+    *       'someValue' => 'test'
+    *   });
     */
     global Object call(String action, Map<String, Object> dtoMap) {
         jam.objects.throwIfBlank(action, 'Action is required');
         jam.objects.throwIfBlank(dtoMap, 'DTO Map is required');
-        return jam.objects.getAction(action).run(dtoMap).getMap();
+        jam.Action actionInstance = jam.objects.getAction(action);
+        if ((actionInstance instanceof jam.AllowsCallable) != true) { // Make sure the action implements the jam.AllowsCallable interface
+            throw new jam.ProcessException(String.format('Action {0} does not implement the AllowsCallable interface', new List<String>{action}));
+        }
+        return actionInstance.run(dtoMap).getMap();
     }
 
     @AuraEnabled
-    global static String runAction(String action, String requestJSON) {
+    public static String runAction(String action, String requestJSON) {
         try {
             return jam.run(action, requestJSON).getJSON();
         } catch (Exception ex) {
@@ -20,7 +30,7 @@ global inherited sharing class jam implements Callable {
     }
 
     @RemoteAction
-    global static String runAction(String requestJSON) {
+    public static String runAction(String requestJSON) {
         try {
             Map<String, Object> request = (Map<String, Object>) JSON.deserializeUntyped(requestJSON);
 
@@ -34,6 +44,16 @@ global inherited sharing class jam implements Callable {
         }
     }
 
+    /**
+     * Executes the specified action with the provided request JSON.
+     *
+     * @param action The name of the action to be executed. This should correspond to an existing action in the system.
+     * @param requestJSON The JSON string representing the request data for the action. The structure of this JSON should match the expected input for the action.
+     *
+     * @return A jam.Response object representing the result of the action execution. This includes any data returned by the action and information about the execution status.
+     *
+     * @throws Exception If there is an error during the execution of the action, an exception is thrown. This could be due to issues with the action itself or problems with the input data.
+     */
     public static jam.Response run(String action, String requestJSON) {
         Savepoint savepoint;
 
@@ -234,79 +254,79 @@ global inherited sharing class jam implements Callable {
         }
     }
 
-    global virtual class DTO {
+    public virtual class DTO {
         public Map<String, Object> dto = new Map<String, Object>();
         public Boolean isVisualforce = false;
         public Boolean isAllFields = false;
         public Object defaultFieldValue = '';
 
         //CONSTRUCTORS
-        global DTO() {
+        public DTO() {
         }
 
-        global DTO(String requestJSON) {
+        public DTO(String requestJSON) {
             this.dto = (Map<String, Object>) JSON.deserializeUntyped(requestJSON);
         }
 
-        global DTO(Map<String, Object> requestMap) {
+        public DTO(Map<String, Object> requestMap) {
             this.dto = requestMap == null ? this.dto : requestMap;
         }
 
-        global DTO(String path, String arrayJSON) {
+        public DTO(String path, String arrayJSON) {
             Object arrayObject = JSON.deserializeUntyped(arrayJSON);
             jam.objects.setMapValue(this.dto, path, arrayObject);
         }
 
-        global DTO setIsVisualforce(Boolean value) {
+        public DTO setIsVisualforce(Boolean value) {
             this.isVisualforce = value == true;
             return this;
         }
 
-        global DTO setIsAllFields(Boolean value) {
+        public DTO setIsAllFields(Boolean value) {
             this.isAllFields = value == true;
             return this;
         }
 
-        global DTO setDefaultFieldValue(Object value) {
+        public DTO setDefaultFieldValue(Object value) {
             this.defaultFieldValue = value;
             return this;
         }
 
         //GETTERS
-        global Object get(String path) {
+        public Object get(String path) {
             return jam.objects.getMapValue(this.dto, path);
         }
 
-        global String getString(String path) {
+        public String getString(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : String.valueOf(val);
         }
 
-        global String getRequiredString(String path) {
+        public String getRequiredString(String path) {
             return this.getRequiredString(path, 'The following parameter is missing in the dto: ' + path);
         }
 
-        global String getRequiredString(String path, String errorMessage) {
+        public String getRequiredString(String path, String errorMessage) {
             String val = this.getString(path);
             jam.objects.throwIfBlank(val, errorMessage);
             return val;
         }
 
-        global Integer getInteger(String path) {
+        public Integer getInteger(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : Integer.valueOf(val);
         }
 
-        global Long getLong(String path) {
+        public Long getLong(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             return val == null ? null : (val instanceof String ? Long.valueOf((String) val) : (Long) val);
         }
 
-        global Decimal getDecimal(String path) {
+        public Decimal getDecimal(String path) {
             return jam.objects.parseDecimal(jam.objects.getMapValue(this.dto, path));
         }
 
-        global Boolean getBoolean(String path) {
+        public Boolean getBoolean(String path) {
             Object val = jam.objects.getMapValue(this.dto, path);
             if (val == null) {
                 return false;
@@ -317,12 +337,12 @@ global inherited sharing class jam implements Callable {
             return Boolean.valueOf(val);
         }
 
-        global Date getDate(String path) {
+        public Date getDate(String path) {
             String dateStr = this.getString(path);
             return String.isBlank(dateStr) ? null : Date.valueOf(dateStr);
         }
 
-        global Time getTime(String path) {
+        public Time getTime(String path) {
             String timeStr = this.getString(path);
             if (String.isBlank(timeStr)) {
                 return null;
@@ -330,22 +350,22 @@ global inherited sharing class jam implements Callable {
             return jam.dates.timeStringToTime(timeStr);
         }
 
-        global Datetime getDatetime(String path) {
+        public Datetime getDatetime(String path) {
             String datetimeStr = this.getString(path);
             return datetimeStr == null ? null : jam.dates.datetimeStringToDatetime(datetimeStr);
         }
 
-        global SObject getSObject(String path, SObjectType sObjectTypeVar) {
+        public SObject getSObject(String path, SObjectType sObjectTypeVar) {
             SObject sObj = sObjectTypeVar.newSObject();
             getSObject(path, sObj, false);
             return sObj;
         }
 
-        global DTO getSObject(String path, SObject sObj) {
+        public DTO getSObject(String path, SObject sObj) {
             return getSObject(path, sObj, false);
         }
 
-        global DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
+        public DTO getSObject(String path, SObject sObj, Boolean skipValidation) {
             if (path == null || sObj == null) {
                 return null;
             }
@@ -365,11 +385,11 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        global List<Object> getObjects(String path) {
+        public List<Object> getObjects(String path) {
             return (List<Object>) jam.objects.getMapValue(this.dto, path);
         }
 
-        global List<String> getStrings(String path) {
+        public List<String> getStrings(String path) {
             List<String> strings = new List<String>();
 
             List<Object> objects = (List<Object>) jam.objects.getMapValue(this.dto, path);
@@ -385,7 +405,7 @@ global inherited sharing class jam implements Callable {
             return strings;
         }
 
-        global List<Map<String, Object>> getMaps(String path) {
+        public List<Map<String, Object>> getMaps(String path) {
             List<Map<String, Object>> returnList = new List<Map<String, Object>>();
 
             List<Object> objects = getObjects(path);
@@ -400,7 +420,7 @@ global inherited sharing class jam implements Callable {
             return returnList;
         }
 
-        global List<DTO> getDTOs(String path) {
+        public List<DTO> getDTOs(String path) {
             List<Map<String, Object>> maps = getMaps(path);
 
             if (maps == null) {
@@ -416,11 +436,11 @@ global inherited sharing class jam implements Callable {
             return returnList;
         }
 
-        global List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
+        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar) {
             return getSObjects(path, sObjectTypeVar, false);
         }
 
-        global List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
+        public List<SObject> getSObjects(String path, SObjectType sObjectTypeVar, Boolean skipValidation) {
 
             List<Object> values = (List<Object>) jam.objects.getMapValue(this.dto, path);
 
@@ -440,15 +460,15 @@ global inherited sharing class jam implements Callable {
         }
 
         //SETTERS
-        global DTO put(Map<String, Object> mapVar) {
+        public DTO put(Map<String, Object> mapVar) {
             return this.put(mapVar, true);
         }
 
-        global DTO put(Map<String, Object> mapVar, Integer recordsLimit) {
+        public DTO put(Map<String, Object> mapVar, Integer recordsLimit) {
             return this.put(mapVar, true, recordsLimit);
         }
 
-        global DTO put(Map<String, Object> mapVar, Boolean mapSObjects) {
+        public DTO put(Map<String, Object> mapVar, Boolean mapSObjects) {
             return this.put(mapVar, mapSObjects, null);
         }
 
@@ -459,19 +479,19 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
-        global DTO put(String path, Object value) {
+        public DTO put(String path, Object value) {
             return this.put(path, value, true);
         }
 
-        global DTO put(String path, Object value, Integer recordsLimit) {
+        public DTO put(String path, Object value, Integer recordsLimit) {
             return this.put(path, value, true, recordsLimit);
         }
 
-        global DTO put(String path, Object value, Boolean mapSObjects) {
+        public DTO put(String path, Object value, Boolean mapSObjects) {
             return this.put(path, value, mapSObjects, null);
         }
 
-        global DTO put(String path, Object value, Boolean mapSObjects, Integer recordsLimit) {
+        public DTO put(String path, Object value, Boolean mapSObjects, Integer recordsLimit) {
             if (value != null) {
                 if (value instanceof List<Object>) {
                     List<Object> resultValueArray = (List<Object>) (value instanceof List<SObject> && mapSObjects ? jam.sObjects.sObjectsToMaps((List<SObject>) value, this.defaultFieldValue, this.isAllFields, this.isVisualforce) : value);
@@ -2557,11 +2577,11 @@ global inherited sharing class jam implements Callable {
     }
 
     //EXCEPTIONS
-    global inherited sharing class MissingDataException extends Exception {
+    public inherited sharing class MissingDataException extends Exception {
     }
-    global inherited sharing class ValidationException extends Exception {
+    public inherited sharing class ValidationException extends Exception {
     }
-    global inherited sharing class ProcessException extends Exception {
+    public inherited sharing class ProcessException extends Exception {
     }
 
     //QUERY FACTORY
