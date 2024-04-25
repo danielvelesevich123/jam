@@ -18,6 +18,7 @@ jam.utils.sObjects.setFieldsValues(invoices, new Map<SObjectField, Object>{
 ```
 
 ## DTO
+#### DTO is a data transfer object that can be used to parse JSON or Map<String, Object> and get the values in a type-safe way. DTO is able to get/set the values of the nested objects and arrays.
 ```apex
 String jsonStr = '{"contact": {"Name": "John Doe", "Email": "test@test.com"}, "invoices": [{"Name": "Invoice 1", Start_Date__c": "2020-01-01"}, {"Name": "Invoice 2", Start_Date__c": "2021-01-01"}], "status": "Active"}';
 jam.DTO dtoVar = new jam.DTO(jsonStr);
@@ -60,7 +61,14 @@ new jam.UnitOfWork(
 
 ## Actions
 ```apex
-jam.Response responseVar = new SampleAction(new Map<String, Object>{'requiredString' => 'test'}).run();
+jam.Response responseVar = new SampleAction(new Map<String, Object>{
+    'requiredString' => 'test'}
+).run();
+
+//OR JSON as an input
+
+jam.Response responseVar = new SampleAction('{"requiredString":"test"}').run();
+
 Contact contactVar = responseVar.getSObject('SObject', Contact.SObjectType);
 ```
 
