@@ -205,3 +205,23 @@ new jamTest.HttpMock()
     .add('https://test.com', 'test response')
     .setMock();
 ```
+
+## Cross-package Action execution and Mock for unit test
+####  This allows to execute actions from one package to another package and mock the response for unit testing. Jam should be added in both packages. 
+```apex
+// Assuming the code is called from namespace1 or unmanaged code
+jam.Response response = jam.objects.runPackageAction('namespace2', 'SampleAct', new Map<String, Object>{
+    'someValue' => 'test'
+});
+response.throwIfNotValid();
+
+String str = response.getString('returnedString');
+```
+
+#### Mock the response for unit test
+```apex
+jam.setPackageActionMock('namespace2', 'SampleAct', new Map<String, Object>{
+    'id' => 'testId',
+    'url' => 'testUrl'
+});
+```
