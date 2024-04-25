@@ -2606,9 +2606,9 @@ public class jamTest {
     * Mocks the HTTP callout
     * Usage example
     * new jamTest.HttpMock()
-    * .add('GET', 'https://test.com', 200, new Map<String, Object>{'test': 'test'})
+    * .add('GET', 'https://test.com', 200, new Map<String, Object>{'test' => 'test'})
     * .add('GET', 'https://test.com', 200, 'test response')
-    * .add('https://test.com', new Map<String, Object>{'test': 'test'})
+    * .add('https://test.com', new Map<String, Object>{'test' => 'test'})
     * .add('https://test.com', 'test response')
     * .setMock();
      */
