@@ -1,12 +1,12 @@
 
 ## Utils
 ```apex
-jam.utils.objects.throwIfBlank(stringVar, 'stringVar is blank'); // allows keeping the liner code for code test coverage
+jam.objects.throwIfBlank(stringVar, 'stringVar is blank'); // allows keeping the liner code for code test coverage
 
-jam.utils.arrays.firstOrException([SELECT Id FROM Contact WHERE Email = 'test@test.com']); // return first element of list
+jam.arrays.firstOrException([SELECT Id FROM Contact WHERE Email = 'test@test.com']); // return first element of list
 
 Contact contactVar = new Contact(LastName = 'Doe', Email = 'doe@gmail.com');
-jam.utils.sObjects.deduplicate(contactVar); // tries to find the record based on Duplicate/Matching rules and populates the Id
+jam.sObjects.deduplicate(contactVar); // tries to find the record based on Duplicate/Matching rules and populates the Id
 jam.sObjects.upsertAsUser(contactVar); // upserts the record enforcing the CRUD/FLS
 
 jam.utils.sObjects.getIdFieldValues(contacts, Contact.AccountId); // return set of Account Ids
@@ -21,7 +21,7 @@ String status = dtoVar.getRequiredString('status');
 Contact contactVar = dtoVar.getSObject('contact', Contact.SObjectType);
 List<Invoice__c> invoices = dtoVar.getSObjects('invoices', Invoice__c.SObjectType);
 
-jam.utils.sObjects.deduplicate(contactVar);
+jam.sObjects.deduplicate(contactVar);
 jam.sObjects.upsertAsUser(contactVar);
 
 for(Invoice__c invoice : invoices) {
