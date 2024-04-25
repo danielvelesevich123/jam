@@ -46,8 +46,7 @@ Contact contactVar = jam.queryFactory(Contact.SobjectType)
 
 ## Unit of Work
 ```apex
-jam.uow(
-    new List<SObjectType>{
+jam.uow(new List<SObjectType>{
         Contact.SObjectType,
         Invoice__c.SObjectType,
         Invoice_Line_Item__c.SObjectType
