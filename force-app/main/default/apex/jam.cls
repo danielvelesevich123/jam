@@ -1218,6 +1218,22 @@ global inherited sharing class jam implements Callable {
             return getStringFieldValues(records, '' + field);
         }
 
+        public List<SObject> setFieldValue(List<SObject> records, Schema.SObjectField field, Object value) {
+            for (SObject record : records) {
+                record.put(field, value);
+            }
+            return records;
+        }
+
+        public List<SObject> setFieldsValues(List<SObject> records, Map<SObjectField, Object> fieldsValues) {
+            for (SObject record : records) {
+                for (SObjectField field : fieldsValues.keySet()) {
+                    record.put(field, fieldsValues.get(field));
+                }
+            }
+            return records;
+        }
+
         public Set<String> getStringFieldValues(List<SObject> records, String fieldName) {
 
             Set<String> values = new Set<String>();

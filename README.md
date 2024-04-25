@@ -24,9 +24,7 @@ List<Invoice__c> invoices = dtoVar.getSObjects('invoices', Invoice__c.SObjectTyp
 jam.sObjects.deduplicate(contactVar);
 jam.sObjects.upsertAsUser(contactVar);
 
-for(Invoice__c invoice : invoices) {
-    invoice.Contact__c = contactVar.Id;
-}
+jam.sObjects.setFieldValue(invoices, Invoice.Contact__c, contactVar.Id);
 jam.sObjects.upsertAsUser(invoices);
 ```
 
