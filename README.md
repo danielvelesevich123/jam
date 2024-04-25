@@ -40,7 +40,7 @@ Contact contactVar = jam.queryFactory(Contact.SobjectType)
     .selectFields(new Set<String>{'Id', 'Name', 'Email'})
     .setCondition('Name = :name', new Map<String, Object>{'name' => 'John Doe'}) 
     .setConditions(new List<String>{'Name = :name', 'Email != null'}, new Map<String, Object>{'name' => 'John Doe'})
-    .addOrdering('Name', fflib_QueryFactory.SortOrder.ASCENDING)
+    .addOrdering('Name', jam.SortOrder.ASCENDING)
     .queryFirstOrException('Unable to find Contact');
 ```
 
