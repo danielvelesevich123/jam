@@ -10,6 +10,11 @@ jam.sObjects.deduplicate(contactVar); // tries to find the record based on Dupli
 jam.sObjects.upsertAsUser(contactVar); // upserts the record enforcing the CRUD/FLS
 
 jam.utils.sObjects.getIdFieldValues(contacts, Contact.AccountId); // return set of Account Ids
+
+jam.utils.sObjects.setFieldsValues(invoices, new Map<SObjectField, Object>{
+    Invoice__c.Status__c => 'Active',
+    Invoice__c.Start_Date__c => Date.today()
+}); // set fields values for list of sObjects
 ```
 
 ## DTO
