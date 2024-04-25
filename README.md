@@ -9,9 +9,9 @@ Contact contactVar = new Contact(LastName = 'Doe', Email = 'doe@gmail.com');
 jam.sObjects.deduplicate(contactVar); // tries to find the record based on Duplicate/Matching rules and populates the Id
 jam.sObjects.upsertAsUser(contactVar); // upserts the record enforcing the CRUD/FLS
 
-jam.utils.sObjects.getIdFieldValues(contacts, Contact.AccountId); // return set of Account Ids
+jam.sObjects.getIdFieldValues(contacts, Contact.AccountId); // return set of Account Ids
 
-jam.utils.sObjects.setFieldsValues(invoices, new Map<SObjectField, Object>{
+jam.sObjects.setFieldsValues(invoices, new Map<SObjectField, Object>{
     Invoice__c.Status__c => 'Active',
     Invoice__c.Start_Date__c => Date.today()
 }); // set fields values for list of sObjects
