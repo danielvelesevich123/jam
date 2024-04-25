@@ -3054,6 +3054,10 @@ global inherited sharing class jam implements Callable {
         ASCENDING, DESCENDING
     }
 
+    public static UnitOfWork uow(List<SObjectType> sObjectTypes) {
+        return new UnitOfWork(sObjectTypes);
+    }
+
     //UNIT OF WORK
     public interface IDoWork {
         void doWork();
