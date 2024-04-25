@@ -58,6 +58,12 @@ new jam.UnitOfWork(
     .commitWork();
 ```
 
+## Actions
+```apex
+jam.Response responseVar = new SampleAction(new Map<String, Object>{'requiredString' => 'test'}).run();
+Contact contactVar = responseVar.getSObject('SObject', Contact.SObjectType);
+```
+
 ## Sample Action
 ```apex
 public with sharing class SampleAct extends jam.Action {
