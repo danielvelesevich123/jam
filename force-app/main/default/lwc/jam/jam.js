@@ -439,7 +439,7 @@ const chunk = (array, n) => {
     if (!array.length) {
         return [];
     }
-    return [array.slice(0, n)].concat(this.chunk(array.slice(n), n));
+    return [array.slice(0, n)].concat(chunk(array.slice(n), n));
 }
 
 const getURlParams = () => {
