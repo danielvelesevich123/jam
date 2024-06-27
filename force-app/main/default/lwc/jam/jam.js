@@ -8,22 +8,20 @@ export default class Jam extends LightningElement {
 
     connectedCallback() {
         this.meta = this.getProxy(this.meta || {});
+        this.addEventListener('changedto', this.handleDtoChange.bind(this));
+    }
+
+    handleDtoChange(event) {
+        this.set(event.detail.path, event.detail.value);
     }
 
     isEmpty(target) {
         return target == null || false || target === '' || (Array.isArray(target) && target.length === 0) || (!Array.isArray(target) && typeof target === 'object' && Object.keys(target).length === 0);
     }
 
-    getProxy(obj) {
-        obj = obj || {};
-
-        let that = this;
-
+    getProxy = (obj) => {
         const handler = {
-            get(target, key, receiver) {
-                if (key == 'isProxy') {
-                    return Array.isArray(target) !== true;
-                }
+            get: (target, key, receiver) => {
 
                 if (key === Symbol.iterator) {
                     return function* () {
@@ -33,6 +31,9 @@ export default class Jam extends LightningElement {
                     }
                 }
 
+                if (key === 'constructor') {
+                    return target && target.constructor ? target.constructor : Object;
+                }
 
                 if (key === Symbol.toPrimitive) {
                     return function (hint) {
@@ -46,39 +47,62 @@ export default class Jam extends LightningElement {
                     };
                 }
 
-                if (key == 'notEmpty') {
-                    return !that.isEmpty(target);
+                if (key === Symbol.toStringTag) {
+                    return 'Proxy';
                 }
 
-                if (key == 'empty') {
-                    return that.isEmpty(target);
+                if (key === 'notEmpty') {
+                    return !this.isEmpty(target);
                 }
 
-                const prop = target[key];
-
-                // return if property not found
-                if (typeof prop == 'undefined' || prop === null) {
-                    return new Proxy({}, handler);
+                if (key === 'empty' || key === 'isEmpty') {
+                    return this.isEmpty(target);
                 }
 
-                // set value as proxy if object
-                if (!prop.isProxy && typeof prop === 'object') {
-                    target[key] = new Proxy(prop, handler);
+                if (key === 'toString' || key === 'toJSON') {
+                    return function () {
+                        try {
+                            return target;
+                        } catch (error) {
+                            console.error('Error stringifying target:', error);
+                            return '{}'; // Return an empty JSON string if an error occurs
+                        }
+                    };
                 }
 
-                return target[key];
+                // if (key === 'length') {
+                //     return Array.isArray(target) ? target.length : 0;
+                // }
+
+                let value = Reflect.get(target, key, receiver);
+
+                if (typeof value === 'object' && value !== null && value.isProxy === true) {
+                    return value;
+                } else if (typeof value === 'object' && value !== null && !value.isProxy) {
+                    value = createProxy(value);
+                } else if (Array.isArray(value) && value !== null && !value.isProxy) {
+                    value = createProxy(value);
+                } else if (typeof value === 'undefined') {
+                    value = createProxy({});
+                }
+
+
+                return value;
             },
-            set(target, key, value) {
-                target[key] = value;
-                return true;
+            set: (target, key, value, receiver) => {
+                return Reflect.set(target, key, value, receiver);
+                // target[key] = value;
+                // return true;
             }
         };
-        let proxy = new Proxy({...obj}, handler);
-        proxy.log = () => {
-            console.log(JSON.parse(JSON.stringify(proxy)));
-        }
-        return proxy;
-    }
+
+        const createProxy = (target) => {
+            return new Proxy(target, handler);
+        };
+
+        return createProxy(obj); // Create the initial proxy
+    };
+
 
     disconnectedCallback() {
         for (let path in this.bindings) {
@@ -89,7 +113,7 @@ export default class Jam extends LightningElement {
     }
 
     renderedCallback() {
-        this.template.querySelectorAll('[data-bind]').forEach((bindElement) => {
+        this.template.querySelectorAll('[data-bind]:not([data-bind-custom-handler="true"])').forEach((bindElement) => {
             let pathParent = (bindElement.parentElement ? bindElement.parentElement.getAttribute('data-bind-parent') : '') || '';
             let path = (pathParent ? pathParent + '.' : '') + bindElement.getAttribute('data-bind');
             let index = pathParent ? bindElement.parentElement.getAttribute('data-index') : bindElement.getAttribute('data-index');
@@ -112,9 +136,8 @@ export default class Jam extends LightningElement {
                 event.preventDefault();
                 event.stopPropagation();
 
-                let updatedMeta = this.setMapValue(this.meta, path, this.getElementValue(event));
-                this.meta = this.getProxy(updatedMeta);
-                // this.meta = {...updatedMeta};
+                let updatedMeta = this.setMapValue(JSON.parse(JSON.stringify(this.meta)), path, this.getElementValue(event));
+                this.updateMeta(updatedMeta);
 
                 let binds = this.bindings[path] || [];
                 binds = binds.filter(otherBindElement => otherBindElement.isConnected);
@@ -125,6 +148,12 @@ export default class Jam extends LightningElement {
                 });
             })
         })
+    }
+
+    updateMeta(updatedMeta) {
+        let oldMeta = this.meta;
+        this.meta = this.getProxy(updatedMeta);
+        oldMeta = null;
     }
 
     getElementValue(event) {
@@ -170,7 +199,7 @@ export default class Jam extends LightningElement {
             arrayIndex = parseInt(arrayIndex.slice(0, -1));
         }
 
-        const updatedMap = {...map};
+        const updatedMap = map;
 
         if (path.length === 0) {
             if (arrayIndex !== null) {
@@ -215,21 +244,25 @@ export default class Jam extends LightningElement {
     }
 
     get(path, defaultValue) {
-        let value = this.getMapValue(this.meta, path);
-        return value === undefined ? defaultValue : value;
+        return this.has(path) ? this.getMapValue(this.meta, path) : defaultValue;
     }
 
     set(path, value) {
         if (arguments.length === 1) {
-            this.meta = this.getProxy(path);  // path is actually the new meta
+
+            let updatedMeta = this.getProxy(path);  // path is actually the new meta
+            this.updateMeta(updatedMeta);
+
             for (let path in this.bindings) {
                 this.bindings[path].forEach(bindElement => {
                     this.setElementValue(bindElement, this.getMapValue(this.meta, path));
                 });
             }
         } else {
-            // this.meta = {...this.setMapValue(this.meta, path, value)};
-            this.meta = this.getProxy({...this.setMapValue(this.meta, path, value)});
+
+            let updatedMeta = this.getProxy(this.setMapValue(JSON.parse(JSON.stringify(this.meta)), path, value));
+            this.updateMeta(updatedMeta);
+
             let binds = this.bindings[path] || [];
             binds = binds.filter(otherBindElement => otherBindElement.isConnected);
             binds.forEach(otherBindElement => {
@@ -248,6 +281,17 @@ export default class Jam extends LightningElement {
             }
         }
         return this;
+    }
+
+    has(path) {
+        let value = this.getMapValue(this.meta, path);
+        return value !== undefined &&
+            value !== null &&
+            (
+                Array.isArray(value) ||
+                (typeof value === 'object' && Object.keys(value).length > 0) ||
+                JSON.stringify(value) !== '{}'
+            );
     }
 
 }
@@ -457,11 +501,47 @@ const getURlParams = () => {
         }, {});
 }
 
+const copyToClipboard = (content) => {
+    // Create an input field with the minimum size and place in a not visible part of the screen
+    let tempTextAreaField = document.createElement('textarea');
+    tempTextAreaField.style = 'position:fixed;top:-5rem;height:1px;width:10px;';
+
+    // Assign the content we want to copy to the clipboard to the temporary text area field
+    tempTextAreaField.value = content;
+
+    // Append it to the body of the page
+    document.body.appendChild(tempTextAreaField);
+
+    // Select the content of the temporary markup field
+    tempTextAreaField.select();
+
+    // Run the copy function to put the content to the clipboard
+    document.execCommand('copy');
+
+    // Remove the temporary element from the DOM as it is no longer needed
+    tempTextAreaField.remove();
+}
+
+export class Cache {
+
+    static _cache = {};
+
+    static get(key) {
+        return this._cache[key]
+    }
+
+    static set(key, value) {
+        this._cache[key] = value;
+        return this;
+    }
+}
+
 export {
     showToast,
     runAction,
     validate,
     flatten,
     chunk,
-    getURlParams
+    getURlParams,
+    copyToClipboard
 }
