@@ -5,8 +5,8 @@ public class jamTest {
 
         for (Integer i = 0; i < numContacts; i++) {
             Contact ct = new Contact(
-                    FirstName = 'Contact' + i,
-                    LastName = 'Contact' + i
+                FirstName = 'Contact' + i,
+                LastName = 'Contact' + i
             );
             contacts.add(ct);
         }
@@ -28,8 +28,8 @@ public class jamTest {
     private static Contact createContact(String lastname, String mailingCountry) {
 
         Contact testContact = new Contact(
-                LastName = lastname,
-                MailingCountry = mailingCountry
+            LastName = lastname,
+            MailingCountry = mailingCountry
         );
         return testContact;
     }
@@ -49,14 +49,14 @@ public class jamTest {
     static void testGetPicklistAsSetStrings() {
         System.assertNotEquals(null, jam.picklists.getPicklistAsSetStrings(Account.Industry));
         System.assertNotEquals(null, jam.picklists.getPicklistAsSetStrings(Account.Industry, new Set<String>{
-                'test'
+            'test'
         }));
     }
 
     @IsTest
     static void testGetPicklistOptionsMap() {
         Set<SObjectField> fields = new Set<SObjectField>{
-                Account.Industry, Account.AccountSource
+            Account.Industry, Account.AccountSource
         };
         System.assertNotEquals(null, jam.picklists.getPicklistOptionsMap(fields));
     }
@@ -64,10 +64,10 @@ public class jamTest {
     @IsTest
     static void testGetDependentPicklistOptionsMap() {
         Map<SObjectField, SObjectField> fieldsMap = new Map<SObjectField, SObjectField>{
-                Account.AccountSource.getDescribe().getSobjectField() => Account.Industry.getDescribe().getSobjectField()
+            Account.AccountSource.getDescribe().getSobjectField() => Account.Industry.getDescribe().getSobjectField()
         };
         Map<SObjectType, Map<SObjectField, SObjectField>> dependentFieldsBySObjectType = new Map<SObjectType, Map<SObjectField, SObjectField>>{
-                Account.getSObjectType() => fieldsMap
+            Account.getSObjectType() => fieldsMap
         };
         System.assertNotEquals(null, jam.picklists.getDependentPicklistOptionsMap(dependentFieldsBySObjectType));
     }
@@ -75,9 +75,9 @@ public class jamTest {
     @IsTest
     static void testGetDependentOptions() {
         System.assert(jam.picklists.getDependentOptions(null, Account.ShippingAddress.getDescribe().getSobjectField(),
-                Account.BillingAddress.getDescribe().getSobjectField()).isEmpty());
+            Account.BillingAddress.getDescribe().getSobjectField()).isEmpty());
         System.assert(jam.picklists.getDependentOptions(Contact.getSObjectType(), Account.ShippingAddress.getDescribe().getSobjectField(),
-                Account.BillingAddress.getDescribe().getSobjectField()).isEmpty());
+            Account.BillingAddress.getDescribe().getSobjectField()).isEmpty());
     }
 
     @IsTest
@@ -384,7 +384,7 @@ public class jamTest {
     @IsTest
     static void testJoinNonBlank() {
         List<String> parts = new List<String>{
-                'test1', '', 'test2', ''
+            'test1', '', 'test2', ''
         };
         System.assertEquals('test1;test2', jam.strings.joinNonBlank(parts, ';'));
     }
@@ -428,7 +428,7 @@ public class jamTest {
     static void testGetStringFieldValues() {
         List<Contact> cts = createAndReturnContacts(3);
         Set<String> testSet = new Set<String>{
-                'Contact0', 'Contact1', 'Contact2'
+            'Contact0', 'Contact1', 'Contact2'
         };
         System.assertEquals(testSet, jam.sObjects.getStringFieldValues(cts, Contact.LastName.getDescribe().getSobjectField()));
 
@@ -558,7 +558,7 @@ public class jamTest {
         Contact recordVar2 = new Contact(LastName = 'test2');
 
         System.assert(jam.sObjects.isSomeFieldChanged(recordVar, recordVar2, new List<SObjectField>{
-                Contact.LastName
+            Contact.LastName
         }));
     }
 
@@ -575,7 +575,7 @@ public class jamTest {
     @IsTest
     static void testGetSObjectDescribe() {
         System.assertNotEquals(null, jam.sObjects.getSObjectDescribe(new List<SObjectType>{
-                Account.SObjectType
+            Account.SObjectType
         }));
     }
 
@@ -588,7 +588,7 @@ public class jamTest {
 
         contactVar = [SELECT Account.Name, LastName, FirstName, Birthdate FROM Contact WHERE LastName = 'testContact'];
         System.assertNotEquals(null, jam.sObjects.sObjectsToMaps(new List<Contact>{
-                contactVar
+            contactVar
         }));
 
         System.assertNotEquals(null, jam.sObjects.sObjectToMap(contactVar));
@@ -600,20 +600,20 @@ public class jamTest {
         Contact testContact2 = createContact('test2', 'Australia');
 
         List<Contact> testContacts = new List<Contact>{
-                testContact, testContact2
+            testContact, testContact2
         };
 
         jam.DTO dtoVar = new jam.DTO();
 
 
         dtoVar.put('contact', testContact)
-                .put('contacts', testContacts);
+            .put('contacts', testContacts);
 
         System.assert(dtoVar.dto.containsKey('contact'));
         System.assert(dtoVar.dto.containsKey('contacts'));
 
         Contact newContact = new Contact(
-                Email = 'test@test.com', Birthdate = Date.newInstance(2018, 10, 10)
+            Email = 'test@test.com', Birthdate = Date.newInstance(2018, 10, 10)
         );
 
         dtoVar.getSObject('contact', newContact);
@@ -635,10 +635,10 @@ public class jamTest {
     @IsTest
     static void deduplicate() {
         Contact contact1 = new Contact(
-                FirstName = '1',
-                LastName = '1',
-                Email = '1@test.com',
-                Title = 'Developer'
+            FirstName = '1',
+            LastName = '1',
+            Email = '1@test.com',
+            Title = 'Developer'
         );
 
         insert contact1;
@@ -647,7 +647,7 @@ public class jamTest {
         contact2.Title = 'Manager';
 
         Boolean isExistingRecordFound = jam.sObjects.deduplicate(contact2, new Set<SObjectField>{
-                Contact.Title
+            Contact.Title
         });
 
         upsert contact2;
@@ -679,7 +679,7 @@ public class jamTest {
     @IsTest
     static void testGenerateReportURL() {
         System.assertEquals('/lightning/r/Report/test/view?queryScope=userFolders&fv1=param1&fv2=param2', jam.URLs.generateReportURL('test', new List<String>{
-                'param1', 'param2'
+            'param1', 'param2'
         }));
     }
 
@@ -692,8 +692,8 @@ public class jamTest {
     @IsTest
     static void testMapToFormUrlEncoded() {
         Map<String, String> dataMap = new Map<String, String>{
-                'test1' => 'test1',
-                'test2' => 'test2'
+            'test1' => 'test1',
+            'test2' => 'test2'
         };
 
         System.assertEquals('test1=test1&test2=test2', jam.encodings.mapToFormUrlEncoded(dataMap));
@@ -770,18 +770,18 @@ public class jamTest {
     @IsTest
     static void testSplit() {
         System.assertEquals(
-                new List<List<Object>>{
-                        new List<Object>{
-                                1, 2
-                        }
-                        , new List<Object>{
-                                3, 4
-                        }, new List<Object>{
-                                5, 6
-                        }
-                }, jam.arrays.split(new List<Integer>{
-                        1, 2, 3, 4, 5, 6
-                }, 2, List<Integer>. class));
+            new List<List<Object>>{
+                new List<Object>{
+                    1, 2
+                }
+                , new List<Object>{
+                    3, 4
+                }, new List<Object>{
+                    5, 6
+                }
+            }, jam.arrays.split(new List<Integer>{
+                1, 2, 3, 4, 5, 6
+            }, 2, List<Integer>. class));
     }
 
     @IsTest
@@ -820,7 +820,7 @@ public class jamTest {
     static void testCompose() {
         String template = '{!firstParam} some text {!secondParam}';
         System.assertEquals('test1 some text test2', jam.templates.compose(template, new Map<String, Object>{
-                'firstParam' => 'test1', 'secondParam' => 'test2'
+            'firstParam' => 'test1', 'secondParam' => 'test2'
         }));
     }
 
@@ -845,8 +845,8 @@ public class jamTest {
     @IsTest
     static void testRunPackageAction() {
         jam.setPackageActionMock('rs_stripy', 'StripeAct', new Map<String, Object>{
-                'id' => 'testid',
-                'url' => 'testUrl'
+            'id' => 'testid',
+            'url' => 'testUrl'
         });
 
         jam.Response response = jam.objects.runPackageAction('rs_stripy', 'StripeAct', null);
@@ -978,9 +978,9 @@ public class jamTest {
     static void testJamStatic() {
 
         List<Organization> organizations = [
-                SELECT IsSandbox, TrialExpirationDate
-                FROM Organization
-                WHERE Id = :UserInfo.getOrganizationId()
+            SELECT IsSandbox, TrialExpirationDate
+            FROM Organization
+            WHERE Id = :UserInfo.getOrganizationId()
         ];
         Boolean didThrowException = false;
         Boolean isSandbox = false;
@@ -1013,10 +1013,10 @@ public class jamTest {
         Contact contactVar = new Contact(LastName = 'testContact');
         Account accountVar = new Account(Name = 'testAcc');
         Opportunity oppVar = new Opportunity(
-                CloseDate = Date.today(),
-                Amount = 100,
-                StageName = 'Closed Won',
-                Name = 'test opp'
+            CloseDate = Date.today(),
+            Amount = 100,
+            StageName = 'Closed Won',
+            Name = 'test opp'
         );
 
         insert contactVar;
@@ -1024,11 +1024,11 @@ public class jamTest {
         insert oppVar;
 
         Map<String, Object> requestMap = new Map<String, Object>{
-                'requiredString' => 'testRequiredString',
-                'requiredStringWithMessage' => 'testRequiredStringWithMessage',
-                'contact' => contactVar,
-                'account' => accountVar,
-                'opportunity' => oppVar
+            'requiredString' => 'testRequiredString',
+            'requiredStringWithMessage' => 'testRequiredStringWithMessage',
+            'contact' => contactVar,
+            'account' => accountVar,
+            'opportunity' => oppVar
         };
 
         String requestJSON = JSON.serialize(requestMap);
@@ -1050,7 +1050,7 @@ public class jamTest {
         System.assert(invalidResponse.isValid != true);
     }
 
-    public class jamTestAct extends jam.Action {
+    public inherited sharing class jamTestAct extends jam.Action {
         public override void run() {
             //get any value from request
             String recordId = (String) this.get('value');
@@ -1107,76 +1107,76 @@ public class jamTest {
             Opportunity oppVar = new Opportunity();
 
             this.getSObject('account', accVar)
-                    .getSObject('opportunity', oppVar);
+                .getSObject('opportunity', oppVar);
 
             contactVar.Email = 'test@test.com';
 
             Contact contactVar2 = (Contact) jam.arrays.firstOrException([SELECT Id, FirstName, LastName, Email FROM Contact LIMIT1]);
             List<Contact> contacts = new List<Contact>{
-                    contactVar, contactVar2
+                contactVar, contactVar2
             };
 
             this
-                    .put('object', 2)
-                    .put('SObject', new Contact(LastName = '1'))
-                    .put('SObjectNotMappable', new Contact(LastName = '1'), false)
-                    .put('listObjects', new List<String>{
-                            '123', '234'
-                    })
-                    .put('listObjectsWithLimit', new List<String>{
-                            '123', '234'
-                    }, 1)
-                    .put('listSObjects', new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    })
-                    .put('listSObjectsNotMappable', new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }, false)
-                    .put('listSObjectsWithLimit', new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }, 1)
-                    .put('listSObjectsWithLimitNotMappable', new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }, false, 1);
+                .put('object', 2)
+                .put('SObject', new Contact(LastName = '1'))
+                .put('SObjectNotMappable', new Contact(LastName = '1'), false)
+                .put('listObjects', new List<String>{
+                    '123', '234'
+                })
+                .put('listObjectsWithLimit', new List<String>{
+                    '123', '234'
+                }, 1)
+                .put('listSObjects', new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                })
+                .put('listSObjectsNotMappable', new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }, false)
+                .put('listSObjectsWithLimit', new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }, 1)
+                .put('listSObjectsWithLimitNotMappable', new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }, false, 1);
 
             this.put(new Map<String, Object>{
-                    'object' => 2,
-                    'listObjects' => new List<String>{
-                            '123', '234'
-                    },
-                    'listSObjects' => new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }
+                'object' => 2,
+                'listObjects' => new List<String>{
+                    '123', '234'
+                },
+                'listSObjects' => new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }
             });
 
             this.put(new Map<String, Object>{
-                    'object' => 2,
-                    'listObjectsWithLimit' => new List<String>{
-                            '123', '234'
-                    },
-                    'listSObjectsWithLimit' => new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }
+                'object' => 2,
+                'listObjectsWithLimit' => new List<String>{
+                    '123', '234'
+                },
+                'listSObjectsWithLimit' => new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }
             }, 1);
 
             this.put(new Map<String, Object>{
-                    'object' => 2,
-                    'listObjects' => new List<String>{
-                            '123', '234'
-                    },
-                    'listSObjectsNotMappable' => new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }
+                'object' => 2,
+                'listObjects' => new List<String>{
+                    '123', '234'
+                },
+                'listSObjectsNotMappable' => new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }
             }, false);
 
             this.put(new Map<String, Object>{
-                    'object' => 2,
-                    'listObjectsWithLimit' => new List<String>{
-                            '123', '234'
-                    },
-                    'listSObjectsWithLimitNotMappable' => new List<Contact>{
-                            new Contact(LastName = '1'), new Contact(LastName = '2')
-                    }
+                'object' => 2,
+                'listObjectsWithLimit' => new List<String>{
+                    '123', '234'
+                },
+                'listSObjectsWithLimitNotMappable' => new List<Contact>{
+                    new Contact(LastName = '1'), new Contact(LastName = '2')
+                }
             }, false, 1);
         }
     }
@@ -1188,32 +1188,32 @@ public class jamTest {
         qf.selectField('firstName');
         qf.selectField(Schema.Contact.SObjectType.fields.LastName);
         qf.selectFields(new Set<String>{
-                'acCounTId', 'account.name'
+            'acCounTId', 'account.name'
         });
         qf.selectFields(new List<String>{
-                'homePhonE', 'fAX'
+            'homePhonE', 'fAX'
         });
         qf.selectFields(new List<Schema.SObjectField>{
-                Contact.Email, Contact.Title
+            Contact.Email, Contact.Title
         });
         System.assertEquals(new Set<String>{
-                'FirstName',
-                'LastName',
-                'AccountId',
-                'Account.Name',
-                'HomePhone',
-                'Fax',
-                'Email',
-                'Title'
+            'FirstName',
+            'LastName',
+            'AccountId',
+            'Account.Name',
+            'HomePhone',
+            'Fax',
+            'Email',
+            'Title'
         },
-                qf.getSelectedFields());
+            qf.getSelectedFields());
     }
 
     @IsTest
     static void simpleFieldSelection() {
         jam.QueryFactory qf = new jam.QueryFactory(Contact.SObjectType);
         qf.selectField('NAMe').selectFields(new Set<String>{
-                'naMe', 'email'
+            'naMe', 'email'
         });
         String query = qf.toSOQL();
         System.assert(Pattern.matches('SELECT.*Name.*FROM.*', query), 'Expected Name field in query, got ' + query);
@@ -1239,7 +1239,7 @@ public class jamTest {
     static void duplicateFieldSelection() {
         jam.QueryFactory qf = new jam.QueryFactory(Contact.SObjectType);
         qf.selectField('NAMe').selectFields(new Set<String>{
-                'naMe', 'email'
+            'naMe', 'email'
         });
         String query = qf.toSOQL();
         System.assertEquals(1, query.countMatches('Name'), 'Expected one name field in query: ' + query);
@@ -1255,9 +1255,9 @@ public class jamTest {
         qf2.selectField('NAmE');
         System.assertEquals(qf1, qf2);
         qf1.selectField('name').selectFields(new Set<String>{
-                'NAME', 'name'
+            'NAME', 'name'
         }).selectFields(new Set<Schema.SObjectField>{
-                Contact.Name, Contact.Name
+            Contact.Name, Contact.Name
         });
         System.assertEquals(qf1, qf2);
     }
@@ -1297,21 +1297,21 @@ public class jamTest {
         }
         try {
             qf.selectFields(new Set<String>{
-                    'Not_a_field', 'alsoNotreal'
+                'Not_a_field', 'alsoNotreal'
             });
         } catch (jam.ProcessException e) {
             exceptions.add(e);
         }
         try {
             qf.selectFields(new Set<Schema.SObjectField>{
-                    null
+                null
             });
         } catch (jam.ProcessException e) {
             exceptions.add(e);
         }
         try {
             qf.selectFields(new List<Schema.SObjectField>{
-                    null, Contact.Title
+                null, Contact.Title
             });
         } catch (jam.ProcessException e) {
             exceptions.add(e);
@@ -1396,7 +1396,7 @@ public class jamTest {
         Exception e;
         try {
             qf.selectFields(new List<String>{
-                    'not_a__field'
+                'not_a__field'
             });
         } catch (jam.ProcessException ex) {
             e = ex;
@@ -1424,7 +1424,7 @@ public class jamTest {
         qf.selectField('name');
         Exception e;
         List<Schema.SObjectField> token = new List<Schema.SObjectField>{
-                null
+            null
         };
         try {
             qf.selectFields(token);
@@ -1730,34 +1730,34 @@ public class jamTest {
     static void checkFieldObjectReadSort_success() {
         jam.QueryFactory qf = new jam.QueryFactory(Contact.SObjectType);
         qf.selectField('createdby.name')
-                .selectField(Contact.LastModifiedById)
-                .selectFields(new List<SObjectField>{
-                        Contact.LastModifiedDate
-                })
-                .selectField(Contact.LastName)
-                .selectFields(new List<SObjectField>{
-                        Contact.Id
-                })
-                .setCondition('name like \'%test%\'')
-                .selectFields(new Set<SObjectField>{
-                        Contact.FirstName
-                })
-                .addOrdering(new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING))
-                .addOrdering(Contact.LastModifiedDate, jam.SortOrder.DESCENDING)
-                .addOrdering(Contact.CreatedDate, jam.SortOrder.DESCENDING, true);
+            .selectField(Contact.LastModifiedById)
+            .selectFields(new List<SObjectField>{
+                Contact.LastModifiedDate
+            })
+            .selectField(Contact.LastName)
+            .selectFields(new List<SObjectField>{
+                Contact.Id
+            })
+            .setCondition('name like \'%test%\'')
+            .selectFields(new Set<SObjectField>{
+                Contact.FirstName
+            })
+            .addOrdering(new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING))
+            .addOrdering(Contact.LastModifiedDate, jam.SortOrder.DESCENDING)
+            .addOrdering(Contact.CreatedDate, jam.SortOrder.DESCENDING, true);
         Set<String> fields = qf.getSelectedFields();
         jam.Ordering ordering = new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING);
         System.assertEquals('Name', ordering.getField());
 
         System.assertEquals(new Set<String>{
-                'CreatedBy.Name',
-                'LastModifiedById',
-                'LastModifiedDate',
-                'LastName',
-                'Id',
-                'FirstName'
+            'CreatedBy.Name',
+            'LastModifiedById',
+            'LastModifiedDate',
+            'LastName',
+            'Id',
+            'FirstName'
         },
-                fields);
+            fields);
 
         System.assert(qf.toSOQL().containsIgnoreCase('NULLS LAST'));
     }
@@ -1767,22 +1767,22 @@ public class jamTest {
         jam.QueryFactory qf1 = new jam.QueryFactory(User.SObjectType);
         jam.QueryFactory qf2 = new jam.QueryFactory(User.SObjectType);
         for (jam.QueryFactory qf : new Set<jam.QueryFactory>{
-                qf1, qf2
+            qf1, qf2
         }) {
             qf.selectFields(new List<String>{
-                    'Id',
-                    'FirstName',
-                    'LastName',
-                    'CreatedBy.Name',
-                    'CreatedBy.Manager',
-                    'LastModifiedBy.Email'
+                'Id',
+                'FirstName',
+                'LastName',
+                'CreatedBy.Name',
+                'CreatedBy.Manager',
+                'LastModifiedBy.Email'
             });
         }
         String expectedQuery =
-                'SELECT CreatedBy.ManagerId, CreatedBy.Name, '
-                        + 'FirstName, Id, LastModifiedBy.Email, LastName '
-                        + 'FROM User '
-                        + 'WITH USER_MODE';
+            'SELECT CreatedBy.ManagerId, CreatedBy.Name, '
+                + 'FirstName, Id, LastModifiedBy.Email, LastName '
+                + 'FROM User '
+                + 'WITH USER_MODE';
         System.assertEquals(qf1.toSOQL(), qf2.toSOQL());
         System.assertEquals(expectedQuery, qf1.toSOQL());
         System.assertEquals(expectedQuery, qf2.toSOQL());
@@ -1791,11 +1791,11 @@ public class jamTest {
     @IsTest
     static void deepCloneBasicNoChanges() {
         jam.QueryFactory qf = new jam.QueryFactory(Contact.SObjectType)
-                .setLimit(10)
-                .setCondition('id=12345')
-                .selectField('Description')
-                .addOrdering(new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING))
-                .addOrdering(new jam.Ordering('Contact', 'CreatedDATE', jam.SortOrder.DESCENDING));
+            .setLimit(10)
+            .setCondition('id=12345')
+            .selectField('Description')
+            .addOrdering(new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING))
+            .addOrdering(new jam.Ordering('Contact', 'CreatedDATE', jam.SortOrder.DESCENDING));
 
         jam.QueryFactory qf2 = qf.deepClone();
 
@@ -1810,18 +1810,18 @@ public class jamTest {
     @IsTest
     static void deepCloneBasic() {
         jam.QueryFactory qf = new jam.QueryFactory(Contact.SObjectType)
-                .setLimit(10)
-                .setCondition('id=12345')
-                .selectField('Description')
-                .addOrdering(new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING))
-                .addOrdering(new jam.Ordering('Contact', 'CreatedDATE', jam.SortOrder.DESCENDING));
+            .setLimit(10)
+            .setCondition('id=12345')
+            .selectField('Description')
+            .addOrdering(new jam.Ordering('Contact', 'name', jam.SortOrder.ASCENDING))
+            .addOrdering(new jam.Ordering('Contact', 'CreatedDATE', jam.SortOrder.DESCENDING));
 
 
         jam.QueryFactory qf2 = qf.deepClone()
-                .setLimit(200)
-                .setCondition('id=54321')
-                .selectField('Fax')
-                .addOrdering(new jam.Ordering('Contact', 'Fax', jam.SortOrder.ASCENDING));
+            .setLimit(200)
+            .setCondition('id=54321')
+            .selectField('Fax')
+            .addOrdering(new jam.Ordering('Contact', 'Fax', jam.SortOrder.ASCENDING));
 
         qf2.getOrderings().remove(0);
 
@@ -1875,21 +1875,21 @@ public class jamTest {
     static void testSoql_unsortedSelectFields() {
         jam.QueryFactory qf = new jam.QueryFactory(User.SObjectType);
         qf.selectFields(new List<String>{
-                'Id',
-                'FirstName',
-                'LastName',
-                'CreatedBy.Name',
-                'CreatedBy.Manager',
-                'LastModifiedBy.Email'
+            'Id',
+            'FirstName',
+            'LastName',
+            'CreatedBy.Name',
+            'CreatedBy.Manager',
+            'LastModifiedBy.Email'
         });
 
         qf.setSortSelectFields(false);
 
         String orderedQuery =
-                'SELECT '
-                        + 'FirstName, Id, LastName, '
-                        + 'CreatedBy.ManagerId, CreatedBy.Name, LastModifiedBy.Email '
-                        + 'FROM User';
+            'SELECT '
+                + 'FirstName, Id, LastName, '
+                + 'CreatedBy.ManagerId, CreatedBy.Name, LastModifiedBy.Email '
+                + 'FROM User';
 
         String actualSoql = qf.toSOQL();
 
@@ -1898,12 +1898,12 @@ public class jamTest {
 
     //UNIT OF WORK
     private static List<Schema.SObjectType> MY_SOBJECTS =
-            new Schema.SObjectType[]{
-                    Product2.SObjectType,
-                    PricebookEntry.SObjectType,
-                    Opportunity.SObjectType,
-                    OpportunityLineItem.SObjectType
-            };
+        new Schema.SObjectType[]{
+            Product2.SObjectType,
+            PricebookEntry.SObjectType,
+            Opportunity.SObjectType,
+            OpportunityLineItem.SObjectType
+        };
 
     @IsTest
     private static void testUnitOfWorkEmail() {
@@ -1911,7 +1911,7 @@ public class jamTest {
 
         Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
         email.setToAddresses(new List<String>{
-                'foobar@test.com'
+            'foobar@test.com'
         });
         email.setPlainTextBody('See Spot run.');
 
@@ -1947,13 +1947,13 @@ public class jamTest {
                 opp.StageName = 'Open';
                 opp.CloseDate = System.today();
                 uow.registerNew(new List<SObject>{
-                        opp
+                    opp
                 });
                 for (Integer i = 0; i < o + 1; i++) {
                     Product2 product = new Product2();
                     product.Name = opp.Name + ' : Product : ' + i;
                     uow.registerNew(new List<SObject>{
-                            product
+                        product
                     });
                     PricebookEntry pbe = new PricebookEntry();
                     pbe.UnitPrice = 10;
@@ -1980,12 +1980,12 @@ public class jamTest {
             Opportunity opp = opps[0];
             opp.Name = opp.Name + ' Changed';
             uow.registerDirty(new List<SObject>{
-                    opp
+                opp
             });
             Product2 product = new Product2();
             product.Name = opp.Name + ' : New Product';
             uow.registerNew(new List<SObject>{
-                    product
+                product
             });
             PricebookEntry pbe = new PricebookEntry();
             pbe.UnitPrice = 10;
@@ -2001,21 +2001,21 @@ public class jamTest {
             OpportunityLineItem existingOppLine = opp.OpportunityLineItems[0];
             existingOppLine.Quantity = 2;
             uow.registerDirty(new List<SObject>{
-                    existingOppLine
+                existingOppLine
             });
             existingOppLine.TotalPrice = 20;
             uow.registerDirty(new List<SObject>{
-                    existingOppLine
+                existingOppLine
             });
             uow.commitWork();
         }
 
         opps = [
-                SELECT Id, Name, (SELECT Id, PricebookEntry.Product2.Name, Quantity, TotalPrice FROM OpportunityLineItems ORDER BY PricebookEntry.Product2.Name)
-                FROM Opportunity
-                WHERE Name LIKE
-                        'UoW Test Name %'
-                ORDER BY Name
+            SELECT Id, Name, (SELECT Id, PricebookEntry.Product2.Name, Quantity, TotalPrice FROM OpportunityLineItems ORDER BY PricebookEntry.Product2.Name)
+            FROM Opportunity
+            WHERE Name LIKE
+                'UoW Test Name %'
+            ORDER BY Name
         ];
         System.assertEquals(10, opps.size());
         System.assertEquals('UoW Test Name 0 Changed', opps[0].Name);
@@ -2027,31 +2027,31 @@ public class jamTest {
         {
             jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
             uow.registerDeleted(new List<SObject>{
-                    opps[0].OpportunityLineItems[1].PricebookEntry.Product2
+                opps[0].OpportunityLineItems[1].PricebookEntry.Product2
             });
             uow.registerDeleted(new List<SObject>{
-                    opps[0].OpportunityLineItems[1].PricebookEntry
+                opps[0].OpportunityLineItems[1].PricebookEntry
             });
             uow.registerDeleted(new List<SObject>{
-                    opps[0].OpportunityLineItems[1]
+                opps[0].OpportunityLineItems[1]
             });
             uow.registerDeleted(new List<SObject>{
-                    opps[0].OpportunityLineItems[1].PricebookEntry.Product2
+                opps[0].OpportunityLineItems[1].PricebookEntry.Product2
             });
             uow.registerDeleted(new List<SObject>{
-                    opps[0].OpportunityLineItems[1].PricebookEntry
+                opps[0].OpportunityLineItems[1].PricebookEntry
             });
             uow.registerDeleted(new List<SObject>{
-                    opps[0].OpportunityLineItems[1]
+                opps[0].OpportunityLineItems[1]
             });
             uow.commitWork();
         }
 
         opps = [
-                SELECT Id, Name, (SELECT Id, PricebookEntry.Product2.Name, Quantity FROM OpportunityLineItems ORDER BY PricebookEntry.Product2.Name)
-                FROM Opportunity
-                WHERE Name LIKE 'UoW Test Name %'
-                ORDER BY Name
+            SELECT Id, Name, (SELECT Id, PricebookEntry.Product2.Name, Quantity FROM OpportunityLineItems ORDER BY PricebookEntry.Product2.Name)
+            FROM Opportunity
+            WHERE Name LIKE 'UoW Test Name %'
+            ORDER BY Name
         ];
         List<Product2> prods = [SELECT Id FROM Product2 WHERE Name = 'UoW Test Name 0 Changed : New Product'];
         System.assertEquals(10, opps.size());
@@ -2085,13 +2085,13 @@ public class jamTest {
             opp.StageName = 'Open';
             opp.CloseDate = System.today();
             uow.registerNew(new List<SObject>{
-                    opp
+                opp
             });
             for (Integer i = 0; i < o + 1; i++) {
                 Product2 product = new Product2();
                 product.Name = opp.Name + ' : Product : ' + i;
                 uow.registerNew(new List<SObject>{
-                        product
+                    product
                 });
                 PricebookEntry pbe = new PricebookEntry();
                 pbe.UnitPrice = 10;
@@ -2111,26 +2111,26 @@ public class jamTest {
         assertResults('UoW');
 
         assertEvents(new List<String>{
-                'onCommitWorkStarting'
-                , 'onPublishBeforeEventsStarting'
-                , 'onPublishBeforeEventsFinished'
-                , 'onDMLStarting'
-                , 'onDMLFinished'
-                , 'onDoWorkStarting'
-                , 'onDoWorkFinished'
-                , 'onCommitWorkFinishing'
-                , 'onPublishAfterSuccessEventsStarting'
-                , 'onPublishAfterSuccessEventsFinished'
-                , 'onCommitWorkFinished - true'
+            'onCommitWorkStarting'
+            , 'onPublishBeforeEventsStarting'
+            , 'onPublishBeforeEventsFinished'
+            , 'onDMLStarting'
+            , 'onDMLFinished'
+            , 'onDoWorkStarting'
+            , 'onDoWorkFinished'
+            , 'onCommitWorkFinishing'
+            , 'onPublishAfterSuccessEventsStarting'
+            , 'onPublishAfterSuccessEventsFinished'
+            , 'onCommitWorkFinished - true'
         }
-                , uow.getCommitWorkEventsFired(), new Set<Schema.SObjectType>(MY_SOBJECTS), uow.getRegisteredTypes());
+            , uow.getCommitWorkEventsFired(), new Set<Schema.SObjectType>(MY_SOBJECTS), uow.getRegisteredTypes());
     }
 
     private static void testDerivedUnitOfWork_CommitDMLFail() {
         DerivedUnitOfWork uow = new DerivedUnitOfWork(MY_SOBJECTS);
         Opportunity opp = new Opportunity();
         uow.registerNew(new List<SObject>{
-                opp
+            opp
         });
         Boolean didFail = false;
         System.DmlException caughtEx = null;
@@ -2144,19 +2144,19 @@ public class jamTest {
 
         System.assertEquals(didFail, true, 'didFail');
         System.assert(caughtEx.getMessage().contains('REQUIRED_FIELD_MISSING'), String.format('Exception message was ', new List<String>{
-                caughtEx.getMessage()
+            caughtEx.getMessage()
         }));
 
         assertEvents(new List<String>{
-                'onCommitWorkStarting'
-                , 'onPublishBeforeEventsStarting'
-                , 'onPublishBeforeEventsFinished'
-                , 'onDMLStarting'
-                , 'onPublishAfterFailureEventsStarting'
-                , 'onPublishAfterFailureEventsFinished'
-                , 'onCommitWorkFinished - false'
+            'onCommitWorkStarting'
+            , 'onPublishBeforeEventsStarting'
+            , 'onPublishBeforeEventsFinished'
+            , 'onDMLStarting'
+            , 'onPublishAfterFailureEventsStarting'
+            , 'onPublishAfterFailureEventsFinished'
+            , 'onCommitWorkFinished - false'
         }
-                , uow.getCommitWorkEventsFired(), new Set<Schema.SObjectType>(MY_SOBJECTS), uow.getRegisteredTypes());
+            , uow.getCommitWorkEventsFired(), new Set<Schema.SObjectType>(MY_SOBJECTS), uow.getRegisteredTypes());
     }
 
     @IsTest
@@ -2167,7 +2167,7 @@ public class jamTest {
         opp.StageName = 'Open';
         opp.CloseDate = System.today();
         uow.registerNew(new List<SObject>{
-                opp
+            opp
         });
 
         FailDoingWork fdw = new FailDoingWork();
@@ -2185,21 +2185,21 @@ public class jamTest {
 
         System.assertEquals(didFail, true, 'didFail');
         System.assert(caughtEx.getMessage().contains('Work failed.'), String.format('Exception message was ', new List<String>{
-                caughtEx.getMessage()
+            caughtEx.getMessage()
         }));
 
         assertEvents(new List<String>{
-                'onCommitWorkStarting'
-                , 'onPublishBeforeEventsStarting'
-                , 'onPublishBeforeEventsFinished'
-                , 'onDMLStarting'
-                , 'onDMLFinished'
-                , 'onDoWorkStarting'
-                , 'onPublishAfterFailureEventsStarting'
-                , 'onPublishAfterFailureEventsFinished'
-                , 'onCommitWorkFinished - false'
+            'onCommitWorkStarting'
+            , 'onPublishBeforeEventsStarting'
+            , 'onPublishBeforeEventsFinished'
+            , 'onDMLStarting'
+            , 'onDMLFinished'
+            , 'onDoWorkStarting'
+            , 'onPublishAfterFailureEventsStarting'
+            , 'onPublishAfterFailureEventsFinished'
+            , 'onCommitWorkFinished - false'
         }
-                , uow.getCommitWorkEventsFired(), new Set<Schema.SObjectType>(MY_SOBJECTS), uow.getRegisteredTypes());
+            , uow.getCommitWorkEventsFired(), new Set<Schema.SObjectType>(MY_SOBJECTS), uow.getRegisteredTypes());
     }
 
     @IsTest
@@ -2229,7 +2229,7 @@ public class jamTest {
         jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
         uow.registerDirty(nameUpdate);
         uow.registerDirty(amountUpdate, new List<SObjectField>{
-                Opportunity.Amount
+            Opportunity.Amount
         });
         uow.commitWork();
 
@@ -2242,25 +2242,25 @@ public class jamTest {
         System.assertEquals(expectedEvents.size(), actualEvents.size(), 'events size');
         for (Integer i = 0; i < expectedEvents.size(); i++) {
             System.assertEquals(expectedEvents[i], actualEvents[i], String.format('Event {0} was not fired in order expected.', new List<String>{
-                    expectedEvents[i]
+                expectedEvents[i]
             }));
         }
 
         System.assertEquals(expectedTypes.size(), actualTypes.size(), 'types size');
         for (Schema.SObjectType sObjectType : expectedTypes) {
             System.assertEquals(true, actualTypes.contains(sObjectType), String.format('Type {0} was not registered.', new List<String>{
-                    sObjectType.getDescribe().getName()
+                sObjectType.getDescribe().getName()
             }));
         }
     }
 
-    private class FailDoingWork implements jam.IDoWork {
+    private inherited sharing class FailDoingWork implements jam.IDoWork {
         public void doWork() {
             throw new jam.ProcessException('Work failed.');
         }
     }
 
-    private class DerivedUnitOfWork extends jam.UnitOfWork {
+    private inherited sharing class DerivedUnitOfWork extends jam.UnitOfWork {
         private List<String> m_commitWorkEventsFired = new List<String>();
         private Set<Schema.SObjectType> m_registeredTypes = new Set<Schema.SObjectType>();
 
@@ -2284,7 +2284,7 @@ public class jamTest {
             for (String eventName : m_commitWorkEventsFired) {
                 if (event == eventName) {
                     throw new jam.ProcessException(String.format('Event {0} has already been fired.', new List<String>{
-                            event
+                        event
                     }));
                 }
             }
@@ -2294,7 +2294,7 @@ public class jamTest {
         public override void onRegisterType(Schema.SObjectType sObjectType) {
             if (m_registeredTypes.contains(sObjectType)) {
                 throw new jam.ProcessException(String.format('Type {0} has already been registered.', new List<String>{
-                        sObjectType.getDescribe().getName()
+                    sObjectType.getDescribe().getName()
                 }));
             }
             m_registeredTypes.add(sObjectType);
@@ -2353,7 +2353,7 @@ public class jamTest {
         }
     }
 
-    private class Mock_SendEmailWork implements jam.IEmailWork {
+    private inherited sharing class Mock_SendEmailWork implements jam.IEmailWork {
         public Mock_SendEmailWork() {
         }
 
@@ -2373,21 +2373,21 @@ public class jamTest {
         // new "Minimum Access - Salesforce" profile, falling back to "Read Only" otherwise.
         List<Profile> profileList = [SELECT Id, Name FROM Profile WHERE Name IN ('Minimum Access - Salesforce', 'Read Only') ORDER BY Name];
         System.assert(
-                profileList.size() >= 1,
-                'Unable to create a "restricted" User for testing purposes because we are not able to find the required User Profiles.'
+            profileList.size() >= 1,
+            'Unable to create a "restricted" User for testing purposes because we are not able to find the required User Profiles.'
         );
         User restrictedUser = new User(
-                Alias = 'standt',
-                Email = 'standarduser@testorg.com',
-                EmailEncodingKey = 'UTF-8',
-                LastName = 'Testing',
-                LanguageLocaleKey = 'en_US',
-                LocaleSidKey = 'en_US',
-                // Use the first Profile in the list. Because we've ordered by name, this causes us to use
-                // "Minimum Access - Salesforce" if it's present.
-                ProfileId = profileList[0].Id,
-                TimeZoneSidKey = 'America/Los_Angeles',
-                Username = '' + Datetime.now().getTime() + 'crudmanageruser1@testorg.com'
+            Alias = 'standt',
+            Email = 'standarduser@testorg.com',
+            EmailEncodingKey = 'UTF-8',
+            LastName = 'Testing',
+            LanguageLocaleKey = 'en_US',
+            LocaleSidKey = 'en_US',
+            // Use the first Profile in the list. Because we've ordered by name, this causes us to use
+            // "Minimum Access - Salesforce" if it's present.
+            ProfileId = profileList[0].Id,
+            TimeZoneSidKey = 'America/Los_Angeles',
+            Username = '' + Datetime.now().getTime() + 'crudmanageruser1@testorg.com'
         );
         insert restrictedUser;
 
@@ -2409,15 +2409,15 @@ public class jamTest {
     }
 
     private static ObjectPermissions createObjectPerms(
-            Id parentId, String objectType, Boolean canRead, Boolean canCreate, Boolean canEdit, Boolean canDelete
+        Id parentId, String objectType, Boolean canRead, Boolean canCreate, Boolean canEdit, Boolean canDelete
     ) {
         return new ObjectPermissions(
-                ParentId = parentId,
-                SobjectType = objectType,
-                PermissionsRead = canRead,
-                PermissionsCreate = canCreate,
-                PermissionsEdit = canEdit,
-                PermissionsDelete = canDelete
+            ParentId = parentId,
+            SobjectType = objectType,
+            PermissionsRead = canRead,
+            PermissionsCreate = canCreate,
+            PermissionsEdit = canEdit,
+            PermissionsDelete = canDelete
         );
     }
 
@@ -2431,7 +2431,7 @@ public class jamTest {
         try {
             System.runAs(restrictedUser) {
                 jam.sObjects.insertAsSystem(new Opportunity[]{
-                        o1
+                    o1
                 });
             }
         } catch (Exception e) {
@@ -2446,7 +2446,7 @@ public class jamTest {
         Campaign c1 = new Campaign(Name = 'Test1 Campaign');
         System.runAs(new User(Id = UserInfo.getUserId())) {
             insert new Campaign[]{
-                    c1
+                c1
             };
         }
 
@@ -2460,7 +2460,7 @@ public class jamTest {
         System.runAs(restrictedUser) {
             try {
                 jam.sObjects.insertAsUser(new Opportunity[]{
-                        o1
+                    o1
                 });
                 System.assert(false, 'Expected a DML Error! Restricted User shouldn\'t be able to insert Opportunity.CampaignId');
             } catch (jam.ProcessException flse) {
@@ -2476,13 +2476,13 @@ public class jamTest {
         Campaign c2 = new Campaign(Name = 'Test2 Campaign');
         System.runAs(new User(Id = UserInfo.getUserId())) {
             insert new Campaign[]{
-                    c1, c2
+                c1, c2
             };
         }
 
         Opportunity o1 = new Opportunity(Name = 'Original1 Opp', CampaignId = c1.Id, StageName = 'Won', CloseDate = Date.today());
         jam.sObjects.upsertAsUser(new Opportunity[]{
-                o1
+            o1
         });
         System.assert(o1.Id != null);
 
@@ -2492,7 +2492,7 @@ public class jamTest {
         Opportunity o2 = new Opportunity(Name = 'Test2 Opp', CampaignId = c2.Id, StageName = 'Won', CloseDate = Date.today());
 
         jam.sObjects.upsertAsUser(new Opportunity[]{
-                o1, o2
+            o1, o2
         });
 
         List<Opportunity> reload = [SELECT Id, Name, CampaignId FROM Opportunity ORDER BY Id];
@@ -2570,7 +2570,7 @@ public class jamTest {
         Id cId = null;
 
         insert new SObject[]{
-                c1
+            c1
         };
         cId = c1.Id;
         delete c1;
@@ -2590,11 +2590,11 @@ public class jamTest {
         insert ps;
 
         ObjectPermissions oPerm = new ObjectPermissions(ParentId = ps.Id,
-                PermissionsRead = true,
-                PermissionsCreate = create,
-                PermissionsEdit = edit,
-                PermissionsDelete = remove,
-                SobjectType = objectType);
+            PermissionsRead = true,
+            PermissionsCreate = create,
+            PermissionsEdit = edit,
+            PermissionsDelete = remove,
+            SobjectType = objectType);
 
         insert oPerm;
 
@@ -2612,14 +2612,16 @@ public class jamTest {
     * .add('https://test.com', 'test response')
     * .setMock();
      */
-    public class HttpMock implements HttpCalloutMock {
+    public inherited sharing class HttpMock implements HttpCalloutMock {
 
         private final Map<String, String> endpointResponseMap = new Map<String, String>();
 
         public HttpResponse respond(HttpRequest req) {
             String endpoint = req.getEndpoint();
             String method = req.getMethod();
-            String mockData = endpointResponseMap.get(method + '|' + endpoint.substringBefore('?'));
+            String key = method + '|' + endpoint.substringBefore('?');
+            System.debug(key);
+            String mockData = endpointResponseMap.get(key);
 
             jam.objects.throwIfBlank(mockData, 'No Mock endpoint: ' + req.getEndpoint());
             List<String> mockParts = mockData.split('\\|');
