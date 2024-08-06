@@ -5,7 +5,7 @@ project:
         name: jam
         api_version: '60.0'
     git:
-        repo_url: https://github.com/danielvelesevich123/jam
+        repo_url: https://github.com/ReSourcePro/jam
         default_branch: 'release-production'
         prefix_feature: feature/
     test:
@@ -22,7 +22,7 @@ tasks:
     robot_testdoc:
         options:
             path: robot/jam/tests
-            output: robot/animalOS/doc/animalOS_tests.html
+            output: robot/jam/doc/jam_tests.html
 
     run_tests:
         options:
