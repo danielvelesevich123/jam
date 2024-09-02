@@ -309,7 +309,7 @@ const showToast = (page, title, message, type, messageData, mode) => {
 
 const runAction = async (action, request) => {
     try {
-        console.log(action, 'REQUEST', JSON.parse(JSON.stringify(request)));
+        console.log(action, 'REQUEST', JSON.stringify(request));
 
         let responseJSON = await runApex({
             action: action,
@@ -317,7 +317,7 @@ const runAction = async (action, request) => {
         });
 
         const response = JSON.parse(responseJSON);
-        console.log(action, 'RESPONSE', JSON.parse(JSON.stringify(response)));
+        console.log(action, 'RESPONSE', JSON.stringify(response, null, 2));
 
         if (response.isValid !== true) {
             throw response.errors;
@@ -443,6 +443,7 @@ const validate = (containerComponent, options) => {
         'lightning-combobox',
         'lightning-radio-group',
         'lightning-checkbox-group',
+        'c-jam-lookup',
         'c-jam-select'
     ];
 

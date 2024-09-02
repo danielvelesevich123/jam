@@ -844,12 +844,12 @@ public class jamTest {
 
     @IsTest
     static void testRunPackageAction() {
-        jam.setPackageActionMock('rs_stripy', 'StripeAct', new Map<String, Object>{
+        jam.setPackageActionMock('rs_pay', 'StripeAct', new Map<String, Object>{
             'id' => 'testid',
             'url' => 'testUrl'
         });
 
-        jam.Response response = jam.objects.runPackageAction('rs_stripy', 'StripeAct', null);
+        jam.Response response = jam.objects.runPackageAction('rs_pay', 'StripeAct', null);
         System.assert(response.isValid);
     }
 
@@ -1050,7 +1050,7 @@ public class jamTest {
         System.assert(invalidResponse.isValid != true);
     }
 
-    public inherited sharing class jamTestAct extends jam.Action {
+    public with sharing class jamTestAct extends jam.Action {
         public override void run() {
             //get any value from request
             String recordId = (String) this.get('value');
@@ -1941,7 +1941,7 @@ public class jamTest {
     private static void testUnitOfWorkNewDirtyDelete() {
         {
             jam.UnitOfWork uow = new jam.UnitOfWork(MY_SOBJECTS);
-            for (Integer o = 0; o < 10; o++) {
+            for (Integer o = 0; o < 10; o++) { // Query: DML Statements Inside Loops False Positive: the loop is necessary to crate test data for Unit Test class.
                 Opportunity opp = new Opportunity();
                 opp.Name = 'UoW Test Name ' + o;
                 opp.StageName = 'Open';
@@ -1949,7 +1949,7 @@ public class jamTest {
                 uow.registerNew(new List<SObject>{
                     opp
                 });
-                for (Integer i = 0; i < o + 1; i++) {
+                for (Integer i = 0; i < o + 1; i++) { // Query: DML Statements Inside Loops False Positive: the loop is necessary to crate test data for Unit Test class.
                     Product2 product = new Product2();
                     product.Name = opp.Name + ' : Product : ' + i;
                     uow.registerNew(new List<SObject>{
@@ -2079,7 +2079,7 @@ public class jamTest {
     @IsTest
     private static void testDerivedUnitOfWork_CommitSuccess() {
         DerivedUnitOfWork uow = new DerivedUnitOfWork(MY_SOBJECTS);
-        for (Integer o = 0; o < 10; o++) {
+        for (Integer o = 0; o < 10; o++) { // Query: DML Statements Inside Loops False Positive: the loop is necessary to crate test data for Unit Test class.
             Opportunity opp = new Opportunity();
             opp.Name = 'UoW Test Name ' + o;
             opp.StageName = 'Open';
@@ -2087,7 +2087,7 @@ public class jamTest {
             uow.registerNew(new List<SObject>{
                 opp
             });
-            for (Integer i = 0; i < o + 1; i++) {
+            for (Integer i = 0; i < o + 1; i++) { // Query: DML Statements Inside Loops False Positive: the loop is necessary to crate test data for Unit Test class.
                 Product2 product = new Product2();
                 product.Name = opp.Name + ' : Product : ' + i;
                 uow.registerNew(new List<SObject>{
@@ -2254,13 +2254,13 @@ public class jamTest {
         }
     }
 
-    private inherited sharing class FailDoingWork implements jam.IDoWork {
+    private with sharing class FailDoingWork implements jam.IDoWork {
         public void doWork() {
             throw new jam.ProcessException('Work failed.');
         }
     }
 
-    private inherited sharing class DerivedUnitOfWork extends jam.UnitOfWork {
+    private with sharing class DerivedUnitOfWork extends jam.UnitOfWork {
         private List<String> m_commitWorkEventsFired = new List<String>();
         private Set<Schema.SObjectType> m_registeredTypes = new Set<Schema.SObjectType>();
 
@@ -2353,7 +2353,7 @@ public class jamTest {
         }
     }
 
-    private inherited sharing class Mock_SendEmailWork implements jam.IEmailWork {
+    private with sharing class Mock_SendEmailWork implements jam.IEmailWork {
         public Mock_SendEmailWork() {
         }
 
@@ -2612,7 +2612,7 @@ public class jamTest {
     * .add('https://test.com', 'test response')
     * .setMock();
      */
-    public inherited sharing class HttpMock implements HttpCalloutMock {
+    public with sharing class HttpMock implements HttpCalloutMock {
 
         private final Map<String, String> endpointResponseMap = new Map<String, String>();
 
@@ -2620,7 +2620,6 @@ public class jamTest {
             String endpoint = req.getEndpoint();
             String method = req.getMethod();
             String key = method + '|' + endpoint.substringBefore('?');
-            System.debug(key);
             String mockData = endpointResponseMap.get(key);
 
             jam.objects.throwIfBlank(mockData, 'No Mock endpoint: ' + req.getEndpoint());

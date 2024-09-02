@@ -453,6 +453,19 @@ global inherited sharing class jam implements Callable {
             return this;
         }
 
+        public DTO getDTO(String path) {
+            return this.getDTO(path, null);
+        }
+
+        public DTO getDTO(String path, DTO defaultValue) {
+            Map<String, Object> val = (Map<String, Object>) jam.objects.getMapValue(this.dto, path);
+            if (val == null) {
+                return defaultValue;
+            }
+
+            return new DTO(val);
+        }
+
         public List<Object> getObjects(String path) {
             return (List<Object>) jam.objects.getMapValue(this.dto, path);
         }
@@ -478,7 +491,7 @@ global inherited sharing class jam implements Callable {
 
             List<Object> objects = getObjects(path);
             if (objects == null) {
-                return null;
+                return returnList;
             }
 
             for (Object obj : objects) {
@@ -489,13 +502,13 @@ global inherited sharing class jam implements Callable {
         }
 
         public List<DTO> getDTOs(String path) {
+            List<DTO> returnList = new List<DTO>();
+
             List<Map<String, Object>> maps = getMaps(path);
 
             if (maps == null) {
-                return new List<DTO>();
+                return returnList;
             }
-
-            List<DTO> returnList = new List<DTO>();
 
             for (Map<String, Object> mapVar : maps) {
                 returnList.add(new DTO(mapVar));
@@ -2059,6 +2072,22 @@ global inherited sharing class jam implements Callable {
                 }
                 operationRestrictedFields.put(obj.getSObjectType(), restrictedFields);
             }
+        }
+
+        public Map<String, Object> querySobjectValues(Id recordId, Set<String> fields) {
+            jam.objects.throwIfBlank(recordId, 'recordId is required');
+            Map<String, Object> valuesMap = new Map<String, Object>();
+            SObject recordVar = jam.queryFactory(recordId.getSobjectType())
+                .selectFields(fields)
+                .setCondition('Id = :recordId', new Map<String, Object>{
+                    'recordId' => recordId
+                })
+                .queryFirstOrException('Record not found with Id: ' + recordId);
+            for (String fieldPath : fields) {
+                valuesMap.put(fieldPath, jam.sObjects.getValueByPath(recordVar, fieldPath));
+            }
+            return valuesMap;
+//            String emailVar = new jam.DTO().put('rec', recordVar).getString('rec.' + inputCustomerEmailField);
         }
     }
 
