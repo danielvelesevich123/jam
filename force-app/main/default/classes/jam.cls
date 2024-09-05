@@ -602,6 +602,11 @@ global inherited sharing class jam implements Callable {
             jam.objects.setMapValue(this.dto, path, value);
             return this;
         }
+
+        public DTO debug(){
+            System.debug(JSON.serializePretty(this.dto));
+            return this;
+        }
     }
 
     public inherited sharing virtual class Response extends jam.DTO {
