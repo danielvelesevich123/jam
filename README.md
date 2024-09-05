@@ -1,4 +1,4 @@
-<a href="https://githubsfdeploy.herokuapp.com?owner=ReSourcePro&repo=jam&ref=release-production default">
+<a href="https://githubsfdeploy.herokuapp.com?owner=ReSourcePro&repo=jam&ref=release-production">
   <img alt="Deploy to Salesforce"
        src="https://raw.githubusercontent.com/afawcett/githubsfdeploy/master/deploy.png">
 </a>
