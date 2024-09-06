@@ -168,7 +168,7 @@ export default class Jam extends LightningElement {
     setElementValue(input, value) {
         let isCheckbox = input.type === 'toggle' || input.type === 'checkbox';
         if (isCheckbox) {
-            if (input.checked !== value) {
+            if (input.checked !== value && typeof value !== 'object') {
                 input.checked = value;
             }
             return;
