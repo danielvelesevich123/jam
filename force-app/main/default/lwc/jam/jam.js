@@ -260,7 +260,7 @@ export default class Jam extends LightningElement {
             }
         } else {
 
-            let updatedMeta = this.getProxy(this.setMapValue(JSON.parse(JSON.stringify(this.meta)), path, value));
+            let updatedMeta = this.getProxy(this.setMapValue(JSON.parse(JSON.stringify(this.meta || {})), path, value));
             this.updateMeta(updatedMeta);
 
             let binds = this.bindings[path] || [];

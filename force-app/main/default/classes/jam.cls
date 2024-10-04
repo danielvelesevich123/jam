@@ -1240,6 +1240,19 @@ global inherited sharing class jam implements Callable {
             return String.join(notBlankParts, separator);
         }
 
+        /**
+         * Replaces all occurrences of `{{field_api_name__c}}` and `{{field_api_name}}` with `{!field_api_name}` in the given string.
+         *
+         * This method uses a regular expression to find patterns of `{{field_api_name__c}}` and `{{field_api_name}}` and replaces them with `{!field_api_name}`.
+         * The `(?:__c)?` part of the regex makes the `__c` suffix optional, and `(?:__r\\.\\w+)?` handles nested fields like `Account__r.Name`.
+         *
+         * @param str The input string containing the placeholders to be replaced.
+         * @return The modified string with all placeholders replaced.
+         */
+        public String replaceFieldPlaceholders(String str){
+            return str?.replaceAll('\\{\\{(\\w+(?:__r\\.\\w+)?)(?:__c)?\\}\\}', '{!$1}');
+        }
+
     }
 
     public inherited sharing class UserExtensions {
@@ -3108,6 +3121,48 @@ global inherited sharing class jam implements Callable {
             clone.fields = this.fields.clone();
 
             return clone;
+        }
+
+        public QueryFactory selectAllFields(AccessType accessTypeVar, Set<SObjectField> excludeFields) {
+            Map<String, SObjectField> fieldsMap = this.table.getDescribe().fields.getMap();
+            for (String fieldName : fieldsMap.keySet()) {
+                SObjectField fieldVar = fieldsMap.get(fieldName);
+
+                Boolean isExcluded = excludeFields?.contains(fieldVar) == true;
+
+                Boolean isNotReadable = accessTypeVar == AccessType.READABLE && fieldVar.getDescribe().isAccessible() != true;
+                Boolean isNotCreatable = accessTypeVar == AccessType.CREATABLE && fieldVar.getDescribe().isCreateable() != true;
+                Boolean isNotUpdatable = accessTypeVar == AccessType.UPDATABLE && fieldVar.getDescribe().isUpdateable() != true;
+                Boolean isNotUpsertable = accessTypeVar == AccessType.UPSERTABLE && (fieldVar.getDescribe().isUpdateable() || fieldVar.getDescribe().isCreateable()) != true;
+
+                Boolean isSelectable = !(isExcluded || isNotReadable || isNotCreatable || isNotUpdatable || isNotUpsertable);
+                if (isSelectable) {
+                    this.selectField(fieldsMap.get(fieldName));
+                }
+            }
+            return this;
+        }
+
+        public QueryFactory selectAllAccessibleFields() {
+            return selectAllAccessibleFields(null);
+        }
+
+        public QueryFactory selectAllAccessibleFields(Set<SObjectField> excludeFields) {
+
+            Map<String, SObjectField> fieldsMap = this.table.getDescribe().fields.getMap();
+            for (String fieldName : fieldsMap.keySet()) {
+                SObjectField fieldVar = fieldsMap.get(fieldName);
+                if (excludeFields?.contains(fieldVar) != true && fieldVar.getDescribe().isAccessible()) {
+                    this.selectField(fieldsMap.get(fieldName));
+                }
+            }
+
+            return this;
+        }
+
+        public QueryFactory debug() {
+            System.debug(this.toSOQL());
+            return this;
         }
 
     }
